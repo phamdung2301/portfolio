@@ -18,7 +18,7 @@ export const PROFILE = {
   tagline:
     'Tôi xây dựng giao diện web 3D tương tác, nơi trải nghiệm người dùng và hiệu năng luôn đi cùng nhau.',
   location: 'Đà Nẵng, Việt Nam',
-  email: 'phamhadacdung2301@gmai.com',
+  email: 'phamhadacdung2301@gmail.com',
   socials: [
     { label: 'GitHub', href: 'https://github.com/phamdung2301' },
     { label: 'LinkedIn', href: 'https://linkedin.com' },
