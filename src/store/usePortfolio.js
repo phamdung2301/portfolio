@@ -19,4 +19,33 @@ export const usePortfolioStore = create((set) => ({
 
   setActiveSection: (activeSection) => set({ activeSection }),
   setHoveredSkill: (hoveredSkill) => set({ hoveredSkill }),
+
+  // ---- S2: Thế giới tự do (chỉ đổi khi vào/ra world, không đổi mỗi frame)
+  /** true khi đang ở chế độ đi lại trong cảnh 3D */
+  worldMode: false,
+  /** id skill đã thu thập trong world (theo phiên, không lưu localStorage) */
+  collectedSkills: [],
+  /** id vật thể đang ở gần nhất trong world, hoặc null */
+  nearby: null,
+  /** terminal trong world đang mở hay không */
+  terminalOpen: false,
+  /** id project đang mở panel chi tiết trong world, hoặc null */
+  projectDetailId: null,
+  /** thông báo ngắn trong world (vd. "Đã sao chép email") */
+  worldToast: null,
+  /** section cần cuộn tới khi thoát world (goto từ terminal), hoặc null */
+  worldExitTarget: null,
+
+  setWorldMode: (worldMode) => set({ worldMode }),
+  collectSkill: (skillId) =>
+    set((s) =>
+      s.collectedSkills.includes(skillId)
+        ? s
+        : { collectedSkills: [...s.collectedSkills, skillId] },
+    ),
+  setNearby: (nearby) => set({ nearby }),
+  setTerminalOpen: (terminalOpen) => set({ terminalOpen }),
+  setProjectDetailId: (projectDetailId) => set({ projectDetailId }),
+  setWorldToast: (worldToast) => set({ worldToast }),
+  setWorldExitTarget: (worldExitTarget) => set({ worldExitTarget }),
 }))

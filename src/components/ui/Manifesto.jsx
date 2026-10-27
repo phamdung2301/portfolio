@@ -39,7 +39,7 @@ function Manifesto() {
   const words = PROFILE.tagline.split(' ')
 
   return (
-    <section ref={ref} aria-label="Tuyên ngôn" className="py-4 md:py-8">
+    <section ref={ref} aria-label="Tuyên ngôn" className="pointer-events-auto py-4 md:py-8">
       {reducedMotion ? (
         <p className="font-display text-3xl font-semibold leading-[1.15] tracking-tight text-white/90 md:text-5xl">
           {PROFILE.tagline}

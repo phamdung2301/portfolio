@@ -134,7 +134,7 @@ function Contact() {
   }
 
   return (
-    <section id="contact" className="scroll-mt-24">
+    <section id="contact" className="pointer-events-auto scroll-mt-24">
       <SectionHeading index="04" title="Liên hệ" />
 
       <motion.div

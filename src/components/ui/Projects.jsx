@@ -239,7 +239,7 @@ function Projects() {
   }
 
   return (
-    <section id="projects" className="scroll-mt-24">
+    <section id="projects" className="pointer-events-auto scroll-mt-24">
       <SectionHeading index="03" title="Dự án tiêu biểu" />
 
       <div className="mt-10 flex flex-wrap gap-2" role="group" aria-label="Lọc dự án">

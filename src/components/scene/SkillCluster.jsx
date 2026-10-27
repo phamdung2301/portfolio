@@ -23,20 +23,26 @@ import { getSceneState } from './choreography.js'
  */
 export default function SkillCluster() {
   const group = useRef(null)
+  const worldMode = usePortfolioStore((s) => s.worldMode)
+  // S2: orb đã thu thập thì biến mất khỏi cảnh.
+  const collectedSkills = usePortfolioStore((s) => s.collectedSkills)
 
   useFrame((state, delta) => {
     if (!group.current) return
     const t = scrollState.smoothed
-    // Cụm skill trôi lên nhẹ và xoay chậm theo scroll
+    // S2: ở world mode, cụm về tư thế trung tính để tọa độ orb khớp
+    // với interactables.js (tính proximity theo data).
+    const targetY = worldMode ? 0 : Math.sin(t * Math.PI * 2) * 0.22
+    const targetRotY = worldMode ? 0 : t * Math.PI * 0.9 - 0.35
     group.current.position.y = THREE.MathUtils.damp(
       group.current.position.y,
-      Math.sin(t * Math.PI * 2) * 0.22,
+      targetY,
       3,
       delta,
     )
     group.current.rotation.y = THREE.MathUtils.damp(
       group.current.rotation.y,
-      t * Math.PI * 0.9 - 0.35,
+      targetRotY,
       3,
       delta,
     )
@@ -44,9 +50,11 @@ export default function SkillCluster() {
 
   return (
     <group ref={group} position={[0, 0, 0]}>
-      {SKILLS.map((skill, i) => (
-        <SkillOrb key={skill.id} skill={skill} index={i} />
-      ))}
+      {SKILLS.filter((s) => !collectedSkills.includes(s.id)).map(
+        (skill, i) => (
+          <SkillOrb key={skill.id} skill={skill} index={i} />
+        ),
+      )}
     </group>
   )
 }
@@ -137,6 +145,16 @@ function SkillOrb({ skill, index }) {
 
   const handleClick = (e) => {
     e.stopPropagation()
+    // S2: trong world, bấm orb = thu thập, không cuộn trang.
+    if (usePortfolioStore.getState().worldMode) {
+      const st = usePortfolioStore.getState()
+      if (!st.collectedSkills.includes(skill.id)) {
+        st.collectSkill(skill.id)
+        const total = usePortfolioStore.getState().collectedSkills.length
+        st.setWorldToast(`Đã thu thập: ${skill.name} (${total}/7)`)
+      }
+      return
+    }
     setActiveSection('skills')
     // S1 fix: trước đây click chỉ đổi state mà trang không cuộn,
     // nên nhìn như không có gì xảy ra. Giờ cuộn thật tới section.

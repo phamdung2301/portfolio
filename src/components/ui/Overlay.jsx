@@ -22,7 +22,11 @@ function Overlay() {
     <div className="pointer-events-none relative z-10 w-full">
       <Nav progress={offset} />
 
-      <main className="pointer-events-auto mx-auto flex w-full max-w-6xl flex-col gap-28 px-6 pb-32 pt-32 md:px-10 md:pt-40">
+      {/* S2: main để pointer-events-none, từng section tự bật lại auto
+          (xem từng file section) — vùng trống giữa các section lộ ra
+          cho Canvas, nên click/hover mesh 3D mới chạy được. Trước đây
+          main auto chặn hết raycast ở vùng trống. */}
+      <main className="pointer-events-none mx-auto flex w-full max-w-6xl flex-col gap-28 px-6 pb-32 pt-32 md:px-10 md:pt-40">
         <Hero />
         <About />
         <Manifesto />

@@ -9,8 +9,11 @@ import DustParticles from './scene/DustParticles.jsx'
 import Workspace from './scene/Workspace.jsx'
 import SkillCluster from './scene/SkillCluster.jsx'
 import SceneEnvironment from './scene/SceneEnvironment.jsx'
+import WorldLevel from './scene/WorldLevel.jsx'
+import WorldPlayer from './scene/WorldPlayer.jsx'
 import { scrollState } from '../hooks/useScrollState.js'
 import { getSceneState } from './scene/choreography.js'
+import { usePortfolioStore } from '../store/usePortfolio.js'
 
 /**
  * M5: giữ mượt khi FPS thấp — PerformanceMonitor + AdaptiveDpr tự hạ DPR.
@@ -179,6 +182,9 @@ function SectionBeam() {
 }
 
 function SceneContent() {
+  // S2: mặt bằng + người chơi chỉ mount trong world mode — chế độ cuộn
+  // giữ nguyên diorama, không thêm vật thể lạ vào nền.
+  const worldMode = usePortfolioStore((s) => s.worldMode)
   return (
     <>
       <ScrollSmoother />
@@ -190,6 +196,12 @@ function SceneContent() {
       <SceneEnvironment />
       <Workspace />
       <SkillCluster />
+      {worldMode && (
+        <>
+          <WorldLevel />
+          <WorldPlayer />
+        </>
+      )}
     </>
   )
 }

@@ -26,7 +26,7 @@ function MarqueeBand() {
   return (
     <div
       aria-hidden="true"
-      className="marquee -mx-6 overflow-hidden border-y border-white/10 py-5 md:-mx-10"
+      className="marquee pointer-events-auto -mx-6 overflow-hidden border-y border-white/10 py-5 md:-mx-10"
     >
       <div className="marquee-track">
         <Row />

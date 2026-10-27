@@ -6,7 +6,7 @@ import { ABOUT, EXPERIENCE } from '../../data/portfolio.js'
 /** Section giới thiệu: mô tả + kinh nghiệm làm việc. */
 function About() {
   return (
-    <section id="about" className="scroll-mt-24">
+    <section id="about" className="pointer-events-auto scroll-mt-24">
       <SectionHeading index="01" title="Giới thiệu" />
 
       <div className="mt-10 grid gap-12 md:grid-cols-[1.15fr_0.85fr]">

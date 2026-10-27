@@ -1,12 +1,16 @@
 import { useEffect } from 'react'
 import Scene from './components/Scene.jsx'
 import Overlay from './components/ui/Overlay.jsx'
+import WorldHUD from './components/ui/WorldHUD.jsx'
 import { usePortfolioStore } from './store/usePortfolio.js'
 import { useScrollListener, scrollState } from './hooks/useScrollState.js'
 
 export default function App() {
   const activeSection = usePortfolioStore((s) => s.activeSection)
   const setActiveSection = usePortfolioStore((s) => s.setActiveSection)
+  // S2: world mode thay toàn bộ Overlay cuộn bằng HUD — Canvas (z-0)
+  // lúc này không còn lớp DOM nào đè lên, nên raycast/click 3D chạy.
+  const worldMode = usePortfolioStore((s) => s.worldMode)
 
   // Listener scroll toàn cục (dùng chung cho lớp 3D và lớp 2D)
   useScrollListener()
@@ -35,8 +39,8 @@ export default function App() {
         <Scene />
       </div>
 
-      {/* Lớp nội dung 2D cuộn theo trang */}
-      <Overlay />
+      {/* Lớp nội dung 2D cuộn theo trang, hoặc HUD khi ở trong world */}
+      {worldMode ? <WorldHUD /> : <Overlay />}
 
       {/* M4: grain phim tĩnh phủ toàn viewport — không bắt sự kiện,
           không animate, chỉ là texture 5% nên không ảnh hưởng đọc chữ. */}

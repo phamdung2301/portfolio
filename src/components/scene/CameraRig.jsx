@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { scrollState } from '../../hooks/useScrollState.js'
+import { usePortfolioStore } from '../../store/usePortfolio.js'
 
 /**
  * Các "keyframe" camera tương ứng từng section của trang.
@@ -23,6 +24,7 @@ const KEYFRAMES = [
  */
 export default function CameraRig() {
   const { camera, size } = useThree()
+  const worldMode = usePortfolioStore((s) => s.worldMode)
   const pointer = useRef({ x: 0, y: 0 })
   const current = useRef({
     position: new THREE.Vector3(...KEYFRAMES[0].position),
@@ -41,6 +43,8 @@ export default function CameraRig() {
   )
 
   useFrame((state, delta) => {
+    // S2: ở world mode, WorldPlayer cầm camera — Rig không được ghi đè.
+    if (worldMode) return
     const t = scrollState.smoothed
     // Vị trí giữa 2 keyframe
     const scaled = t * (KEYFRAMES.length - 1)

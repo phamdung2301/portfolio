@@ -4,6 +4,10 @@ import { Float, RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
 import { scrollState } from '../../hooks/useScrollState.js'
 import { getSceneState } from './choreography.js'
+import { usePortfolioStore } from '../../store/usePortfolio.js'
+
+/** Màu màn hình khi terminal trong world đang mở. */
+const TERMINAL_GREEN = new THREE.Color('#22c55e')
 
 /**
  * Vật thể chính: góc làm việc low-poly.
@@ -12,6 +16,8 @@ import { getSceneState } from './choreography.js'
 export default function Workspace() {
   const root = useRef(null)
   const monitor = useRef(null)
+  const worldMode = usePortfolioStore((s) => s.worldMode)
+  const terminalOpen = usePortfolioStore((s) => s.terminalOpen)
 
   // Vật liệu dùng chung -> giảm số chương trình shader
   const materials = useMemo(
@@ -40,16 +46,21 @@ export default function Workspace() {
     if (!root.current) return
     const t = scrollState.smoothed
 
-    // Nhấc bàn nhẹ + xoay theo scroll (parallax mạnh hơn camera)
+    // S2: ở world mode, bàn về tư thế trung tính (không xoay theo
+    // scroll) để tọa độ vật thể khớp với interactables.js. Scroll bị
+    // khóa trong world nên t đóng băng — nhưng damp về 0 vẫn cần để
+    // triệt tiêu góc xoay còn lại từ lúc vào world.
+    const targetY = worldMode ? 0 : Math.sin(t * Math.PI * 2) * 0.16
+    const targetRotY = worldMode ? 0 : t * Math.PI * 0.55
     root.current.position.y = THREE.MathUtils.damp(
       root.current.position.y,
-      Math.sin(t * Math.PI * 2) * 0.16,
+      targetY,
       3,
       delta,
     )
     root.current.rotation.y = THREE.MathUtils.damp(
       root.current.rotation.y,
-      t * Math.PI * 0.55,
+      targetRotY,
       3,
       delta,
     )
@@ -60,8 +71,10 @@ export default function Workspace() {
     const sceneState = getSceneState(t)
     const pulse =
       sceneState.monitor + Math.sin(state.clock.elapsedTime * 2.1) * 0.12
+    // S2: terminal mở → màn hình chuyển xanh lá, vạch code giả ẩn đi
+    // (ẩn ở MonitorAssembly theo terminalOpen).
     materials.screen.emissive.lerp(
-      sceneState.monitorColor,
+      worldMode && terminalOpen ? TERMINAL_GREEN : sceneState.monitorColor,
       1 - Math.exp(-3 * delta),
     )
     materials.accent.emissive.lerp(
@@ -77,7 +90,7 @@ export default function Workspace() {
       )
       monitor.current.rotation.y = THREE.MathUtils.damp(
         monitor.current.rotation.y,
-        -0.25 + t * 0.5,
+        worldMode ? -0.25 : -0.25 + t * 0.5,
         3,
         delta,
       )
@@ -129,6 +142,11 @@ function DeskLegs({ materials }) {
 }
 
 const MonitorAssembly = forwardRef(function MonitorAssembly({ materials }, ref) {
+  const worldMode = usePortfolioStore((s) => s.worldMode)
+  const terminalOpen = usePortfolioStore((s) => s.terminalOpen)
+  const setWorldMode = usePortfolioStore((s) => s.setWorldMode)
+  const setTerminalOpen = usePortfolioStore((s) => s.setTerminalOpen)
+
   // Vạch "code" giả lập trên màn hình
   const codeLines = useMemo(
     () => [
@@ -141,7 +159,18 @@ const MonitorAssembly = forwardRef(function MonitorAssembly({ materials }, ref) 
   )
 
   return (
-    <group ref={ref} position={[0, 1.08, -0.55]}>
+    <group
+      ref={ref}
+      position={[0, 1.08, -0.55]}
+      onClick={(e) => {
+        e.stopPropagation()
+        // S2: màn hình là cổng vào world (chế độ cuộn) và mở terminal
+        // (khi đã ở trong world). Nút Hero vẫn là đường vào chắc chắn
+        // nhất, vì click mesh có thể bị lớp Overlay chặn ở chế độ cuộn.
+        if (worldMode) setTerminalOpen(true)
+        else setWorldMode(true)
+      }}
+    >
       <RoundedBox
         args={[0.12, 0.42, 0.12]}
         radius={0.03}
@@ -161,12 +190,15 @@ const MonitorAssembly = forwardRef(function MonitorAssembly({ materials }, ref) 
       <mesh material={materials.screen} position={[0, 1.28, 0.05]}>
         <planeGeometry args={[2.34, 1.3]} />
       </mesh>
-      {codeLines.map(([x, y, w, color], i) => (
-        <mesh key={i} position={[x, 1.28 + y, 0.06]}>
-          <planeGeometry args={[w, 0.045]} />
-          <meshBasicMaterial color={color} transparent opacity={0.85} />
-        </mesh>
-      ))}
+      {/* S2: terminal mở thì vạch code giả ẩn đi, màn hình thuộc về terminal */}
+      <group visible={!terminalOpen}>
+        {codeLines.map(([x, y, w, color], i) => (
+          <mesh key={i} position={[x, 1.28 + y, 0.06]}>
+            <planeGeometry args={[w, 0.045]} />
+            <meshBasicMaterial color={color} transparent opacity={0.85} />
+          </mesh>
+        ))}
+      </group>
     </group>
   )
 })

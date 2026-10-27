@@ -31,7 +31,7 @@ function Skills() {
   }
 
   return (
-    <section id="skills" className="scroll-mt-24">
+    <section id="skills" className="pointer-events-auto scroll-mt-24">
       <SectionHeading
         index="02"
         title="Kỹ năng"
