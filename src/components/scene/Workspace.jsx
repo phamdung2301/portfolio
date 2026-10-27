@@ -5,7 +5,6 @@ import * as THREE from 'three'
 import { scrollState } from '../../hooks/useScrollState.js'
 import { getSceneState } from './choreography.js'
 import { usePortfolioStore } from '../../store/usePortfolio.js'
-import { PROFILE } from '../../data/portfolio.js'
 import { seatRef } from '../world/shared.js'
 import ScreenDisplay from './ScreenDisplay.jsx'
 
@@ -208,21 +207,14 @@ function ChairAssembly({ materials }) {
 }
 
 /**
- * S2 (khung ảnh) — khung chân dung đặt trên bàn, bên phải màn hình.
- * Ảnh thật do user cung cấp (855×1280 nên khung 0.72×1.08 giữ đúng
- * tỉ lệ 2:3, nhúng dạng data URI — xem src/data/assets.js). Chế độ
- * cuộn: đứng yên. Khi ngồi: rung lắc nhẹ
- * (xoay ±0.02 rad + nhích y) như tín hiệu "muốn xem". Bấm vào khung
- * trong world → mở card visit.
+ * S2 (khung ảnh) — khung GỖ NHỎ TRỐNG đặt trên bàn, bên phải màn hình.
+ * User chốt 2026-10-27: khung luôn trống, ảnh chỉ nằm trong card visit
+ * (không dán ảnh lên khung 3D nữa). Viền gỗ nâu ấm + mặt nền tối.
+ * Chế độ cuộn: đứng yên. Khi ngồi: rung lắc nhẹ (xoay ±0.02 rad +
+ * nhích y) như tín hiệu "muốn xem". Bấm vào khung trong world →
+ * mở card visit.
  */
 function PhotoFrame() {
-  // Ảnh là data URI (xem src/data/assets.js) nên dùng TextureLoader
-  // trực tiếp, không qua useTexture (dành cho URL file).
-  const texture = useMemo(() => {
-    const tex = new THREE.TextureLoader().load(PROFILE.portrait)
-    tex.colorSpace = THREE.SRGBColorSpace
-    return tex
-  }, [])
   const frame = useRef(null)
   const seated = usePortfolioStore((s) => s.seated)
 
@@ -250,17 +242,18 @@ function PhotoFrame() {
       }}
     >
       <RoundedBox
-        args={[0.72, 1.08, 0.04]}
+        args={[0.5, 0.65, 0.04]}
         radius={0.02}
         smoothness={3}
-        position={[0, 0.54, 0]}
+        position={[0, 0.325, 0]}
         castShadow
       >
-        <meshStandardMaterial color="#3d2b1f" roughness={0.7} />
+        <meshStandardMaterial color="#6b4a2f" roughness={0.65} />
       </RoundedBox>
-      <mesh position={[0, 0.54, 0.025]}>
-        <planeGeometry args={[0.62, 0.98]} />
-        <meshBasicMaterial map={texture} toneMapped={false} />
+      {/* Mặt nền tối bên trong khung — trống, không ảnh, không chữ. */}
+      <mesh position={[0, 0.325, 0.021]}>
+        <planeGeometry args={[0.42, 0.57]} />
+        <meshStandardMaterial color="#1a1512" roughness={0.9} />
       </mesh>
     </group>
   )
@@ -345,16 +338,106 @@ const MonitorAssembly = forwardRef(function MonitorAssembly({ materials }, ref) 
   )
 })
 
+/**
+ * S2 (bàn phím RGB) — đế phẳng như cũ + lưới phím thật + underglow.
+ *  - 5 hàng × 14 phím, phím cách là một hộp dài riêng (8 ô cuối hàng 4
+ *    nhường chỗ cho phím cách). Phím vẽ bằng InstancedMesh: 62 instance
+ *    = 1 draw call (pattern đã dùng cho 350 hạt bụi S3).
+ *  - Sóng cầu vồng: hue theo vị trí phím + thời gian, cập nhật
+ *    instanceColor mỗi frame; phím dùng meshBasicMaterial (phát sáng,
+ *    không phụ thuộc đèn cảnh) nên nhìn là biết đèn nền RGB thật.
+ *  - Dải underglow ở mép trước bàn phím chạy cùng sóng (màu tại x=0).
+ *  - Tốc độ chậm, độ sáng vừa — nháy đèn nhưng không gắt khi cuộn.
+ */
+const KEY_COLS = 14
+const KEY_ROWS = 5
+const KEY_STEP_X = 0.13
+const KEY_STEP_Z = 0.11
+const KEY_X0 = -0.845
+const KEY_Z0 = 0.2
+
 function Keyboard({ materials }) {
+  const keysRef = useRef(null)
+  const spaceRef = useRef(null)
+  const glowRef = useRef(null)
+
+  // Vị trí từng phím (bỏ 8 ô phím cách ở hàng cuối), tính một lần.
+  const keyPositions = useMemo(() => {
+    const list = []
+    for (let row = 0; row < KEY_ROWS; row++) {
+      for (let col = 0; col < KEY_COLS; col++) {
+        if (row === KEY_ROWS - 1 && col >= 3 && col <= 10) continue
+        list.push([
+          KEY_X0 + col * KEY_STEP_X,
+          KEY_Z0 + row * KEY_STEP_Z,
+        ])
+      }
+    }
+    return list
+  }, [])
+
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+  const color = useMemo(() => new THREE.Color(), [])
+
+  useEffect(() => {
+    // Đặt ma trận tĩnh cho mọi phím một lần (vị trí không đổi).
+    const inst = keysRef.current
+    if (!inst) return
+    keyPositions.forEach(([x, z], i) => {
+      dummy.position.set(x, 1.165, z)
+      dummy.updateMatrix()
+      inst.setMatrixAt(i, dummy.matrix)
+    })
+    inst.instanceMatrix.needsUpdate = true
+  }, [keyPositions, dummy])
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime
+    const inst = keysRef.current
+    if (inst) {
+      keyPositions.forEach(([x], i) => {
+        color.setHSL(((x * 0.55 + t * 0.12) % 1 + 1) % 1, 0.9, 0.55)
+        inst.setColorAt(i, color)
+      })
+      inst.instanceColor.needsUpdate = true
+    }
+    if (spaceRef.current) {
+      spaceRef.current.color.setHSL((t * 0.12) % 1, 0.9, 0.55)
+    }
+    if (glowRef.current) {
+      glowRef.current.color.setHSL((t * 0.12) % 1, 0.9, 0.55)
+    }
+  })
+
   return (
-    <RoundedBox
-      args={[1.9, 0.06, 0.6]}
-      radius={0.03}
-      smoothness={3}
-      material={materials.panel}
-      position={[0, 1.11, 0.42]}
-      castShadow
-    />
+    <group>
+      <RoundedBox
+        args={[1.9, 0.06, 0.6]}
+        radius={0.03}
+        smoothness={3}
+        material={materials.panel}
+        position={[0, 1.11, 0.42]}
+        castShadow
+      />
+      <instancedMesh
+        ref={keysRef}
+        args={[undefined, undefined, keyPositions.length]}
+        frustumCulled={false}
+      >
+        <boxGeometry args={[0.11, 0.04, 0.09]} />
+        <meshBasicMaterial toneMapped={false} />
+      </instancedMesh>
+      {/* Phím cách: dài 8 ô, cùng sóng tại x = 0 */}
+      <mesh position={[0, 1.165, KEY_Z0 + 4 * KEY_STEP_Z]}>
+        <boxGeometry args={[1.02, 0.04, 0.09]} />
+        <meshBasicMaterial ref={spaceRef} toneMapped={false} />
+      </mesh>
+      {/* Dải underglow mép trước bàn phím */}
+      <mesh position={[0, 1.1, 0.745]}>
+        <boxGeometry args={[1.9, 0.02, 0.05]} />
+        <meshBasicMaterial ref={glowRef} toneMapped={false} />
+      </mesh>
+    </group>
   )
 }
 

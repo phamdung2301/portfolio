@@ -5,14 +5,20 @@ import { usePortfolioStore } from '../../store/usePortfolio.js'
 import { gameScoreRef } from '../world/shared.js'
 
 /**
- * S2 (màn hình code gõ) — texture vẽ bằng canvas 2D dán lên mặt màn hình.
+ * S2 (màn hình) — texture vẽ bằng canvas 2D dán lên mặt màn hình.
  *
- * Nền canvas TRONG SUỐT: màu nền phát sáng của mặt màn hình (đổi mood
- * theo section, xanh lá khi terminal mở) vẫn lộ ra phía sau, chữ chỉ
- * nổi lên trên. Nhờ vậy không cần vẽ nền, không tranh với emissive.
+ * Các mode chữ (code/terminal/game/projects/contact) vẽ trên nền TRONG
+ * SUỐT: màu nền phát sáng của mặt màn hình (đổi mood theo section,
+ * xanh lá khi terminal mở) vẫn lộ ra phía sau, chữ chỉ nổi lên trên.
  *
  * Chế độ vẽ theo trạng thái (đọc từ store, không giữ state riêng):
- *  - code (mặc định, cả chế độ cuộn): gõ từng ký tự đoạn snippet demo
+ *  - cozy (chế độ cuộn + đứng trong world): cảnh đêm ấm vẽ tay — bầu
+ *    trời chàm → cam, trăng, sao nhấp nháy, skyline với cửa sổ sáng
+ *    đèn chớp tắt chậm. Vẽ lại mỗi ~300ms, đủ sống động mà không tốn
+ *    frame. Đây là "màn hình chờ" mang vibe góc làm việc ấm cúng;
+ *    KHÔNG dùng ảnh có bản quyền (Minecraft/anime) — toàn bộ vẽ bằng
+ *    canvas, cũng tránh luôn vụ push file nhị phân.
+ *  - code (chỉ khi ngồi, tab Code): gõ từng ký tự đoạn snippet demo
  *    (cấu trúc thật của trang, không phải nội dung file nguyên văn),
  *    hết đoạn giữ 2s rồi gõ lại. Chỉ cập nhật texture khi có ký tự mới.
  *  - terminal: prompt + con trỏ nhấp nháy.
@@ -41,6 +47,51 @@ const KEYWORDS = new Set([
   'default',
 ])
 
+// Seed cố định để sao/nhà không nhảy vị trí mỗi lần vẽ lại.
+function mulberry32(seed) {
+  return function () {
+    seed |= 0
+    seed = (seed + 0x6d2b79f5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+const STARS = (() => {
+  const rand = mulberry32(20261027)
+  return Array.from({ length: 90 }, () => ({
+    x: rand() * 1024,
+    y: rand() * 330,
+    r: 0.8 + rand() * 1.4,
+    phase: rand() * Math.PI * 2,
+  }))
+})()
+
+const SKYLINE = (() => {
+  const rand = mulberry32(20261028)
+  const rows = []
+  for (const back of [true, false]) {
+    const buildings = []
+    let x = -10
+    while (x < 1034) {
+      const w = 50 + rand() * 60
+      const h = back
+        ? 60 + rand() * 80
+        : 110 + rand() * 130
+      buildings.push({ x, w, h })
+      x += w + 6 + rand() * 14
+    }
+    rows.push({ back, buildings })
+  }
+  return rows
+})()
+
+function hash01(n) {
+  const s = Math.sin(n) * 43758.5453
+  return s - Math.floor(s)
+}
+
 function wordColor(word) {
   const clean = word.replace(/[^A-Za-z0-9_<>/$]/g, '')
   if (KEYWORDS.has(clean)) return '#67e8f9'
@@ -61,7 +112,7 @@ export default function ScreenDisplay() {
   const terminalOpen = usePortfolioStore((s) => s.terminalOpen)
 
   const mode =
-    terminalOpen && !seated ? 'terminal' : seated ? seatedTab : 'code'
+    terminalOpen && !seated ? 'terminal' : seated ? seatedTab : 'cozy'
 
   const { canvas, texture } = useMemo(() => {
     const c = document.createElement('canvas')
@@ -107,7 +158,60 @@ export default function ScreenDisplay() {
       ctx.clearRect(0, 0, W, H)
       const blink = Math.floor(Date.now() / 530) % 2 === 0
 
-      if (mode === 'code') {
+      if (mode === 'cozy') {
+        const now = Date.now()
+        // Bầu trời: chàm đậm → cam ấm ở chân trời.
+        const sky = ctx.createLinearGradient(0, 0, 0, 470)
+        sky.addColorStop(0, '#070b1d')
+        sky.addColorStop(0.55, '#16213f')
+        sky.addColorStop(0.85, '#7c3f21')
+        sky.addColorStop(1, '#c2691e')
+        ctx.fillStyle = sky
+        ctx.fillRect(0, 0, W, 470)
+        // Trăng + quầng sáng.
+        const glow = ctx.createRadialGradient(820, 110, 10, 820, 110, 120)
+        glow.addColorStop(0, 'rgba(254,243,199,0.55)')
+        glow.addColorStop(1, 'rgba(254,243,199,0)')
+        ctx.fillStyle = glow
+        ctx.fillRect(700, -10, 240, 240)
+        ctx.fillStyle = '#fef3c7'
+        ctx.beginPath()
+        ctx.arc(820, 110, 42, 0, Math.PI * 2)
+        ctx.fill()
+        // Sao nhấp nháy chậm.
+        for (const s of STARS) {
+          const a = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(now / 1000 * 1.5 + s.phase))
+          ctx.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`
+          ctx.beginPath()
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        // Hai lớp skyline: sau (không cửa sổ) rồi trước (có cửa sổ).
+        const bucket = Math.floor(now / 2000)
+        for (const row of SKYLINE) {
+          for (let bi = 0; bi < row.buildings.length; bi++) {
+            const b = row.buildings[bi]
+            ctx.fillStyle = row.back ? '#131b36' : '#0a0e1f'
+            ctx.fillRect(b.x, 470 - b.h, b.w, b.h)
+            if (row.back) continue
+            const cols = Math.floor(b.w / 18)
+            const rowsN = Math.floor(b.h / 26)
+            for (let cx = 0; cx < cols; cx++) {
+              for (let cy = 0; cy < rowsN; cy++) {
+                const lit =
+                  hash01(bi * 127.1 + cx * 311.7 + cy * 17.3 + bucket * 13.7) >
+                  0.45
+                if (!lit) continue
+                ctx.fillStyle = 'rgba(252,211,77,0.85)'
+                ctx.fillRect(b.x + 6 + cx * 18, 470 - b.h + 8 + cy * 26, 7, 9)
+              }
+            }
+          }
+        }
+        // Mặt đất tối phía trước.
+        ctx.fillStyle = '#05070f'
+        ctx.fillRect(0, 470, W, H - 470)
+      } else if (mode === 'code') {
         const t = typeRef.current
         const now = Date.now()
         if (t.line >= SNIPPET.length) {
