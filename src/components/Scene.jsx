@@ -5,6 +5,7 @@ import { easing } from 'maath'
 import * as THREE from 'three'
 
 import CameraRig from './scene/CameraRig.jsx'
+import DustParticles from './scene/DustParticles.jsx'
 import Workspace from './scene/Workspace.jsx'
 import SkillCluster from './scene/SkillCluster.jsx'
 import SceneEnvironment from './scene/SceneEnvironment.jsx'
@@ -184,6 +185,7 @@ function SceneContent() {
       <Lights />
       <SceneFog />
       <SectionBeam />
+      <DustParticles />
       <CameraRig />
       <SceneEnvironment />
       <Workspace />
