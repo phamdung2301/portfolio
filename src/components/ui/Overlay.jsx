@@ -3,6 +3,8 @@ import { motion } from 'framer-motion'
 import Nav from './Nav.jsx'
 import Hero from './Hero.jsx'
 import About from './About.jsx'
+import Manifesto from './Manifesto.jsx'
+import MarqueeBand from './MarqueeBand.jsx'
 import Skills from './Skills.jsx'
 import Projects from './Projects.jsx'
 import Contact from './Contact.jsx'
@@ -23,6 +25,8 @@ function Overlay() {
       <main className="pointer-events-auto mx-auto flex w-full max-w-6xl flex-col gap-28 px-6 pb-32 pt-32 md:px-10 md:pt-40">
         <Hero />
         <About />
+        <Manifesto />
+        <MarqueeBand />
         <Skills />
         <Projects />
         <Contact />

@@ -102,6 +102,44 @@
   }
 }
 
+/* M4: grain phim tĩnh (SVG feTurbulence, không cần file ảnh).
+   fixed + pointer-events-none: phủ toàn viewport nhưng không chặn click.
+   z-index 60: trên nav (30) và sheet/toast (50) — grain là texture phủ
+   toàn khung hình, ở 5% nên không làm giảm khả đọc. */
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* M4: marquee — hai bản copy giống hệt nhau, translateX(-50%) là vòng
+   lặp liền mạch. Hover thì dừng để đọc được. */
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 36s linear infinite;
+}
+
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
+
 /* Tôn trọng thiết lập giảm chuyển động của hệ điều hành */
 @media (prefers-reduced-motion: reduce) {
   *,

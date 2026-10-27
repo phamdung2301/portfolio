@@ -38,6 +38,10 @@ export default function App() {
       {/* Lớp nội dung 2D cuộn theo trang */}
       <Overlay />
 
+      {/* M4: grain phim tĩnh phủ toàn viewport — không bắt sự kiện,
+          không animate, chỉ là texture 5% nên không ảnh hưởng đọc chữ. */}
+      <div aria-hidden="true" className="grain-overlay" />
+
       {/* Vùng trợ giúp cho screen reader */}
       <span className="sr-only" aria-live="polite">
         Section hiện tại: {activeSection}
