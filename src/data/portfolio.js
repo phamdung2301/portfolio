@@ -12,6 +12,8 @@ export const SECTIONS = [
   { id: 'contact', label: 'Liên hệ' },
 ]
 
+import { PORTRAIT_DATA, ZALO_QR_DATA } from './assets.js'
+
 export const PROFILE = {
   name: 'Phạm Hà Đắc Dũng',
   role: 'Full Stack Web Developer',
@@ -19,6 +21,14 @@ export const PROFILE = {
     'Tôi xây dựng giao diện web 3D tương tác, nơi trải nghiệm người dùng và hiệu năng luôn đi cùng nhau.',
   location: 'Đà Nẵng, Việt Nam',
   email: 'phamhadacdung2301@gmail.com',
+  // S2 (ghế + card visit): số điện thoại, trạng thái và ảnh chân dung do
+  // chính user cung cấp ngày 2026-10-27 để công khai trên card visit.
+  // QR Zalo mã hóa link zalo.me theo số điện thoại này.
+  phone: '0366542301',
+  statusLine: 'direct to work',
+  portrait: PORTRAIT_DATA,
+  zaloUrl: 'https://zalo.me/0366542301',
+  zaloQr: ZALO_QR_DATA,
   socials: [
     { label: 'GitHub', href: 'https://github.com/phamdung2301' },
     { label: 'LinkedIn', href: 'https://linkedin.com' },

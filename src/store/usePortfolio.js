@@ -36,6 +36,16 @@ export const usePortfolioStore = create((set) => ({
   /** section cần cuộn tới khi thoát world (goto từ terminal), hoặc null */
   worldExitTarget: null,
 
+  // ---- S2 (ghế + máy tính khi ngồi)
+  /** true khi đang ngồi trên ghế trong world */
+  seated: false,
+  /** tab đang mở trên máy tính khi ngồi */
+  seatedTab: 'terminal',
+  /** cửa sổ máy tính khi ngồi đang mở hay không */
+  computerOpen: false,
+  /** card visit (khung ảnh) đang mở hay không */
+  photoCardOpen: false,
+
   setWorldMode: (worldMode) => set({ worldMode }),
   collectSkill: (skillId) =>
     set((s) =>
@@ -48,4 +58,8 @@ export const usePortfolioStore = create((set) => ({
   setProjectDetailId: (projectDetailId) => set({ projectDetailId }),
   setWorldToast: (worldToast) => set({ worldToast }),
   setWorldExitTarget: (worldExitTarget) => set({ worldExitTarget }),
+  setSeated: (seated) => set({ seated }),
+  setSeatedTab: (seatedTab) => set({ seatedTab }),
+  setComputerOpen: (computerOpen) => set({ computerOpen }),
+  setPhotoCardOpen: (photoCardOpen) => set({ photoCardOpen }),
 }))

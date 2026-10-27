@@ -18,8 +18,24 @@ export async function copyWorldEmail() {
 export function interactWith(spotId) {
   const s = usePortfolioStore.getState()
   if (!spotId) return
+  if (spotId === 'chair') {
+    // Ngồi xuống: mở máy tính luôn ở tab Terminal (ngồi vào máy là để
+    // dùng máy), terminal standalone không mở kèm để khỏi chồng cửa sổ.
+    s.setSeated(true)
+    s.setSeatedTab('terminal')
+    s.setComputerOpen(true)
+    s.setTerminalOpen(false)
+    return
+  }
   if (spotId === 'monitor') {
-    s.setTerminalOpen(true)
+    // Khi đang ngồi, màn hình mở máy tính (tab Terminal) thay vì
+    // terminal standalone — tránh hai cửa sổ chồng nhau.
+    if (s.seated) {
+      s.setSeatedTab('terminal')
+      s.setComputerOpen(true)
+    } else {
+      s.setTerminalOpen(true)
+    }
     return
   }
   if (spotId === 'contact') {

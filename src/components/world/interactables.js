@@ -24,6 +24,17 @@ export const CONTACT_SPOT = {
   radius: 2.6,
 }
 
+/**
+ * S2 (ghế): ghế ở [0, 0, 1.9] — ngoài hộp va chạm bàn (z ±1.6) nên
+ * người chơi đi tới được. Tâm proximity lấy ở mặt ngồi (y 0.9).
+ */
+export const CHAIR_SPOT = {
+  id: 'chair',
+  label: 'Ghế — Ngồi xuống',
+  position: [0, 0.9, 1.9],
+  radius: 2.2,
+}
+
 export const PROJECT_SPOTS = [
   { id: 'project:atlas', projectId: 'atlas', position: [-5.5, 1.2, -2.5], radius: 2.6 },
   { id: 'project:nebula', projectId: 'nebula', position: [0, 1.2, -4.8], radius: 2.6 },
@@ -45,6 +56,7 @@ export function allSpots() {
   return [
     MONITOR_SPOT,
     CONTACT_SPOT,
+    CHAIR_SPOT,
     ...PROJECT_SPOTS,
     ...SKILLS.map(skillSpot),
   ]
@@ -54,6 +66,7 @@ export function spotLabel(spotId) {
   if (!spotId) return null
   if (spotId === 'monitor') return MONITOR_SPOT.label
   if (spotId === 'contact') return CONTACT_SPOT.label
+  if (spotId === 'chair') return CHAIR_SPOT.label
   if (spotId.startsWith('project:')) {
     const project = PROJECTS.find((p) => `project:${p.id}` === spotId)
     return project ? `Dự án: ${project.title} (${project.year})` : spotId

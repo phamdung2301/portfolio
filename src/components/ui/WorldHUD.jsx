@@ -5,6 +5,8 @@ import { spotLabel } from '../world/interactables.js'
 import { interactWith } from '../world/actions.js'
 import { worldInput } from '../world/input.js'
 import WorldTerminal from './WorldTerminal.jsx'
+import SeatedComputer from './SeatedComputer.jsx'
+import PhotoCard from './PhotoCard.jsx'
 
 /**
  * S2 — HUD của Thế giới tự do (DOM, nằm trên Canvas khi worldMode bật).
@@ -84,6 +86,9 @@ export default function WorldHUD() {
   const terminalOpen = usePortfolioStore((s) => s.terminalOpen)
   const projectDetailId = usePortfolioStore((s) => s.projectDetailId)
   const worldToast = usePortfolioStore((s) => s.worldToast)
+  const seated = usePortfolioStore((s) => s.seated)
+  const computerOpen = usePortfolioStore((s) => s.computerOpen)
+  const photoCardOpen = usePortfolioStore((s) => s.photoCardOpen)
   const setWorldMode = usePortfolioStore((s) => s.setWorldMode)
   const setTerminalOpen = usePortfolioStore((s) => s.setTerminalOpen)
   const setProjectDetailId = usePortfolioStore(
@@ -93,6 +98,9 @@ export default function WorldHUD() {
   const setWorldExitTarget = usePortfolioStore((s) => s.setWorldExitTarget)
   const setActiveSection = usePortfolioStore((s) => s.setActiveSection)
   const setNearby = usePortfolioStore((s) => s.setNearby)
+  const setSeated = usePortfolioStore((s) => s.setSeated)
+  const setComputerOpen = usePortfolioStore((s) => s.setComputerOpen)
+  const setPhotoCardOpen = usePortfolioStore((s) => s.setPhotoCardOpen)
 
   const savedScroll = useRef(0)
   const [fade, setFade] = useState(true)
@@ -143,7 +151,9 @@ export default function WorldHUD() {
     return () => clearTimeout(t)
   }, [worldToast, setWorldToast])
 
-  // Esc + E tập trung (bỏ qua khi đang gõ trong input/textarea).
+  // Esc + E + F tập trung (bỏ qua khi đang gõ trong input/textarea).
+  // Thứ tự Esc khi ngồi: card visit → máy tính → đứng dậy → thoát
+  // world. Mỗi lần Esc chỉ làm đúng một việc, không nhảy cóc.
   useEffect(() => {
     const onKeyDown = (e) => {
       const target = e.target
@@ -155,13 +165,39 @@ export default function WorldHUD() {
       }
       const st = usePortfolioStore.getState()
       if (e.key === 'Escape') {
-        if (st.terminalOpen) st.setTerminalOpen(false)
+        if (st.photoCardOpen) st.setPhotoCardOpen(false)
+        else if (st.computerOpen) st.setComputerOpen(false)
+        else if (st.seated) {
+          st.setSeated(false)
+          st.setComputerOpen(false)
+        } else if (st.terminalOpen) st.setTerminalOpen(false)
         else if (st.projectDetailId) st.setProjectDetailId(null)
-        else st.setWorldMode(false)
+        else {
+          st.setSeated(false)
+          st.setComputerOpen(false)
+          st.setPhotoCardOpen(false)
+          st.setNearby(null)
+          st.setWorldMode(false)
+        }
         return
       }
-      if (e.key.toLowerCase() === 'e' && st.nearby && !st.terminalOpen && !st.projectDetailId) {
-        interactWith(st.nearby)
+      if (e.key.toLowerCase() === 'f' && st.seated) {
+        st.setPhotoCardOpen(!st.photoCardOpen)
+        return
+      }
+      if (
+        e.key.toLowerCase() === 'e' &&
+        !st.terminalOpen &&
+        !st.projectDetailId &&
+        !st.photoCardOpen
+      ) {
+        if (st.seated) {
+          // Đang ngồi, máy tính đóng: E mở lại máy tính (đang gõ thì
+          // handler đã return ở trên, nên 'e' không rơi vào terminal).
+          if (!st.computerOpen) st.setComputerOpen(true)
+        } else if (st.nearby) {
+          interactWith(st.nearby)
+        }
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -170,6 +206,9 @@ export default function WorldHUD() {
 
   const exitWorld = () => {
     setNearby(null)
+    setSeated(false)
+    setComputerOpen(false)
+    setPhotoCardOpen(false)
     setWorldMode(false)
   }
 
@@ -224,8 +263,9 @@ export default function WorldHUD() {
         className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/70"
       />
 
-      {/* Joystick cảm ứng */}
-      {coarsePointer && !terminalOpen && !project && (
+      {/* Joystick cảm ứng — ẩn khi ngồi (không di chuyển) hoặc khi
+          có cửa sổ mở, để tay không chạm nhầm. */}
+      {coarsePointer && !terminalOpen && !project && !seated && !computerOpen && !photoCardOpen && (
         <div className="pointer-events-auto absolute bottom-6 left-6">
           <Joystick />
         </div>
@@ -238,8 +278,48 @@ export default function WorldHUD() {
         </div>
       )}
 
+      {/* Thanh điều khiển khi ngồi: mở máy tính / xem khung ảnh /
+          đứng dậy. Prompt vật thể khác ẩn khi ngồi vì không với tới. */}
+      {seated && !photoCardOpen && (
+        <div className="pointer-events-auto absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-wrap justify-center gap-2 px-4">
+          {!computerOpen && (
+            <button
+              type="button"
+              onClick={() => setComputerOpen(true)}
+              className="rounded-full bg-white px-5 py-3 text-sm font-medium text-ink-950 shadow-xl hover:scale-[1.03] active:scale-95"
+            >
+              Mở máy tính
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setPhotoCardOpen(true)}
+            className="rounded-full border border-white/25 bg-black/60 px-5 py-3 text-sm text-white/90 backdrop-blur-md hover:bg-white/10"
+          >
+            Xem khung ảnh (F)
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setComputerOpen(false)
+              setSeated(false)
+            }}
+            className="rounded-full border border-white/25 bg-black/60 px-5 py-3 text-sm text-white/90 backdrop-blur-md hover:bg-white/10"
+          >
+            Đứng dậy (Esc)
+          </button>
+        </div>
+      )}
+
+      {/* Gợi ý khung ảnh đang rung (chỉ khi ngồi, máy tính đóng) */}
+      {seated && !computerOpen && !photoCardOpen && (
+        <p className="absolute left-1/2 top-24 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/50 px-4 py-1.5 font-mono text-xs text-white/70 backdrop-blur-sm">
+          Khung ảnh đang rung ở bên phải — nhấn F để xem
+        </p>
+      )}
+
       {/* Prompt tương tác */}
-      {nearby && !terminalOpen && !project && (
+      {nearby && !terminalOpen && !project && !seated && (
         <div className="pointer-events-auto absolute bottom-6 left-1/2 -translate-x-1/2">
           <button
             type="button"
@@ -255,6 +335,20 @@ export default function WorldHUD() {
       {terminalOpen && (
         <div className="pointer-events-auto absolute inset-0 flex items-center justify-center p-4">
           <WorldTerminal />
+        </div>
+      )}
+
+      {/* Máy tính khi ngồi */}
+      {seated && computerOpen && !photoCardOpen && (
+        <div className="pointer-events-auto absolute inset-0 flex items-center justify-center p-4">
+          <SeatedComputer />
+        </div>
+      )}
+
+      {/* Card visit từ khung ảnh */}
+      {photoCardOpen && (
+        <div className="pointer-events-auto absolute inset-0 flex items-center justify-center p-4">
+          <PhotoCard />
         </div>
       )}
 
@@ -305,7 +399,7 @@ export default function WorldHUD() {
       )}
 
       {/* Màn hình hoàn thành */}
-      {allCollected && !completionDismissed && !terminalOpen && !project && (
+      {allCollected && !completionDismissed && !terminalOpen && !project && !computerOpen && !photoCardOpen && (
         <div className="pointer-events-auto absolute inset-0 flex items-center justify-center p-4">
           <div className="w-full max-w-md rounded-2xl border border-brand-400/40 bg-black/85 p-6 text-center shadow-2xl backdrop-blur-xl">
             <p className="font-mono text-xs tracking-[0.3em] text-brand-300">

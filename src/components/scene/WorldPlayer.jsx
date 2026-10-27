@@ -3,10 +3,11 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { allSpots } from '../world/interactables.js'
 import { worldInput } from '../world/input.js'
+import { seatRef } from '../world/shared.js'
 import { usePortfolioStore } from '../../store/usePortfolio.js'
 
 /**
- * S2 — người chơi trong Thế giới tự do.
+ * S2 — người chơi trong Thế giới tự do (+ ngồi ghế).
  *
  * Điều khiển:
  *  - WASD / phím mũi tên để di chuyển, Shift để chạy nhanh.
@@ -17,15 +18,24 @@ import { usePortfolioStore } from '../../store/usePortfolio.js'
  *  - E hoặc click trực tiếp lên vật thể để tương tác (E xử lý ở HUD để
  *    tránh xung đột khi đang gõ trong terminal; click xử lý ở mesh).
  *
- * Giới hạn:
+ * Ngồi ghế:
+ *  - Khi `seated` đổi trạng thái, camera bay mềm 0.8s (smoothstep) từ vị
+ *    trí hiện tại tới ghế ([0, 1.3, 1.9], nhìn về -z) hoặc ngược lại tới
+ *    vị trí đứng trước ghế ([0, 1.6, 2.7]). Trong lúc bay thì khóa input.
+ *  - Đang ngồi: không di chuyển, chỉ nhìn trong khoảng yaw ±0.6 rad và
+ *    pitch ±0.5 rad; góc nhìn ghi vào seatRef.lookYaw để ghế xoay theo.
+ *  - Proximity tạm dừng khi ngồi (prompt vật thể khác sẽ là lừa, vì
+ *    đang ngồi thì không với tới chúng).
+ *
+ * Giới hạn khi đứng:
  *  - Bán kính 9.5 quanh gốc; đẩy ra khỏi hộp bàn (x ±2.9, z ±1.6) theo
  *    trục xuyên ít nhất — va chạm AABB đơn giản, đủ cho một bàn duy nhất.
  *  - Mắt ở y = 1.6 cố định (không nhảy, không bay).
  *  - Khi terminal/panel đang mở thì đứng yên (không di chuyển khi gõ).
- * Proximity: tính mỗi frame từ vị trí camera tới các spot, chỉ ghi store
- * khi vật gần nhất thay đổi (tránh spam setState mỗi frame).
  */
 const EYE_HEIGHT = 1.6
+const SEAT_POS = new THREE.Vector3(0, 1.3, 1.9)
+const STAND_POS = new THREE.Vector3(0, 1.6, 2.7)
 const BOUND_RADIUS = 9.5
 const DESK_BOX = { x: 2.9, z: 1.6 }
 
@@ -38,6 +48,8 @@ export default function WorldPlayer() {
   const dragging = useRef(false)
   const lastPointer = useRef({ x: 0, y: 0 })
   const nearbyRef = useRef(null)
+  const prevSeated = useRef(false)
+  const anim = useRef({ active: false, t: 0 })
 
   const setNearby = usePortfolioStore((s) => s.setNearby)
 
@@ -73,11 +85,16 @@ export default function WorldPlayer() {
       const dx = e.clientX - lastPointer.current.x
       const dy = e.clientY - lastPointer.current.y
       lastPointer.current = { x: e.clientX, y: e.clientY }
+      const seated = usePortfolioStore.getState().seated
       yaw.current -= dx * 0.0035
-      pitch.current = Math.max(
-        -1.2,
-        Math.min(1.2, pitch.current - dy * 0.0035),
-      )
+      pitch.current -= dy * 0.0035
+      if (seated) {
+        // Khi ngồi: nhìn quanh màn hình trong khoảng hẹp.
+        yaw.current = Math.max(-0.6, Math.min(0.6, yaw.current))
+        pitch.current = Math.max(-0.5, Math.min(0.5, pitch.current))
+      } else {
+        pitch.current = Math.max(-1.2, Math.min(1.2, pitch.current))
+      }
     }
     const onPointerUp = () => {
       dragging.current = false
@@ -101,7 +118,68 @@ export default function WorldPlayer() {
 
   useFrame((_, delta) => {
     const st = usePortfolioStore.getState()
-    // Đứng yên khi panel đang mở (tránh di chuyển khi đang gõ terminal).
+    const seated = st.seated
+
+    // --- Chuyển cảnh ngồi/đứng (0.8s, smoothstep) ---
+    if (seated !== prevSeated.current) {
+      prevSeated.current = seated
+      const to = seated ? SEAT_POS : STAND_POS
+      anim.current = {
+        active: true,
+        t: 0,
+        fromPos: pos.current.clone(),
+        fromYaw: yaw.current,
+        fromPitch: pitch.current,
+        fromY: camera.position.y,
+        toPos: to,
+        toYaw: 0,
+        toPitch: 0,
+        toY: to.y,
+      }
+    }
+    if (anim.current.active) {
+      const a = anim.current
+      a.t += delta / 0.8
+      const e =
+        a.t >= 1 ? 1 : a.t * a.t * (3 - 2 * a.t)
+      let yawDiff = (a.toYaw - a.fromYaw) % (Math.PI * 2)
+      if (yawDiff > Math.PI) yawDiff -= Math.PI * 2
+      if (yawDiff < -Math.PI) yawDiff += Math.PI * 2
+      const cyaw = a.fromYaw + yawDiff * e
+      const cpitch = THREE.MathUtils.lerp(a.fromPitch, a.toPitch, e)
+      const cx = THREE.MathUtils.lerp(a.fromPos.x, a.toPos.x, e)
+      const cz = THREE.MathUtils.lerp(a.fromPos.z, a.toPos.z, e)
+      const cy = THREE.MathUtils.lerp(a.fromY, a.toY, e)
+      const cp = Math.cos(cpitch)
+      camera.position.set(cx, cy, cz)
+      camera.lookAt(
+        cx - Math.sin(cyaw) * cp,
+        cy + Math.sin(cpitch),
+        cz - Math.cos(cyaw) * cp,
+      )
+      if (a.t >= 1) {
+        a.active = false
+        pos.current.set(a.toPos.x, EYE_HEIGHT, a.toPos.z)
+        yaw.current = a.toYaw
+        pitch.current = a.toPitch
+      }
+      return
+    }
+
+    // --- Đang ngồi: đứng yên, chỉ nhìn trong khoảng hẹp ---
+    if (seated) {
+      seatRef.lookYaw = yaw.current
+      const cp = Math.cos(pitch.current)
+      camera.position.set(SEAT_POS.x, SEAT_POS.y, SEAT_POS.z)
+      camera.lookAt(
+        SEAT_POS.x - Math.sin(yaw.current) * cp,
+        SEAT_POS.y + Math.sin(pitch.current),
+        SEAT_POS.z - Math.cos(yaw.current) * cp,
+      )
+      return
+    }
+
+    // --- Đang đứng: di chuyển như trước ---
     const frozen = st.terminalOpen || st.projectDetailId !== null
     const k = keys.current
     const run = k.has('shift') ? 5.5 : 3.2

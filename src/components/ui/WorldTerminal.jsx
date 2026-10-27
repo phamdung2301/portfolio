@@ -9,6 +9,10 @@ import { copyWorldEmail } from '../world/actions.js'
  * văn bản trang trí. DOM thật (không phải texture 3D) để chữ nét, gõ
  * thật và đọc màn hình được. Esc để đóng do HUD xử lý tập trung
  * (tránh double-handler: terminal không tự bắt Esc).
+ *
+ * TerminalBody tách riêng để tab Terminal của máy tính khi ngồi dùng
+ * chung logic mà không lồng hai cửa sổ vào nhau; WorldTerminal chỉ là
+ * lớp vỏ cửa sổ standalone khi đứng trong world.
  */
 const COMMANDS = [
   'help',
@@ -37,7 +41,7 @@ const SECTIONS = {
   'lien-he': 'contact',
 }
 
-export default function WorldTerminal() {
+export function TerminalBody() {
   const setTerminalOpen = usePortfolioStore((s) => s.setTerminalOpen)
   const setWorldMode = usePortfolioStore((s) => s.setWorldMode)
   const setWorldExitTarget = usePortfolioStore(
@@ -138,9 +142,14 @@ export default function WorldTerminal() {
       case 'clear':
         setLines([])
         break
-      case 'exit':
+      case 'exit': {
+        // Standalone: đóng terminal. Tab trong máy tính khi ngồi:
+        // đóng cửa sổ máy tính nhưng vẫn ngồi (mở lại bằng nút/E).
         setTerminalOpen(false)
+        const st = usePortfolioStore.getState()
+        if (st.seated) st.setComputerOpen(false)
         break
+      }
       case 'sudo':
         print([{ kind: 'out', text: 'Bạn không có quyền sudo ở đây đâu 😄' }])
         break
@@ -185,30 +194,7 @@ export default function WorldTerminal() {
   }
 
   return (
-    <div
-      role="dialog"
-      aria-label="Terminal trong thế giới 3D"
-      className="w-[92vw] max-w-2xl overflow-hidden rounded-2xl border border-white/15 bg-black/85 shadow-2xl shadow-black/60 backdrop-blur-xl"
-    >
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-red-400/80" />
-          <span className="h-3 w-3 rounded-full bg-yellow-400/80" />
-          <span className="h-3 w-3 rounded-full bg-green-400/80" />
-          <span className="ml-2 font-mono text-xs text-white/60">
-            dung@portfolio: ~
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={() => setTerminalOpen(false)}
-          aria-label="Đóng terminal"
-          className="rounded-full px-3 py-1 text-sm text-white/60 hover:bg-white/10 hover:text-white"
-        >
-          ✕
-        </button>
-      </div>
-
+    <>
       <div
         ref={outRef}
         className="h-72 overflow-y-auto px-4 py-3 font-mono text-sm leading-relaxed"
@@ -247,6 +233,39 @@ export default function WorldTerminal() {
           className="min-w-0 flex-1 bg-transparent font-mono text-sm text-white outline-none"
         />
       </form>
+    </>
+  )
+}
+
+export default function WorldTerminal() {
+  const setTerminalOpen = usePortfolioStore((s) => s.setTerminalOpen)
+
+  return (
+    <div
+      role="dialog"
+      aria-label="Terminal trong thế giới 3D"
+      className="w-[92vw] max-w-2xl overflow-hidden rounded-2xl border border-white/15 bg-black/85 shadow-2xl shadow-black/60 backdrop-blur-xl"
+    >
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="h-3 w-3 rounded-full bg-red-400/80" />
+          <span className="h-3 w-3 rounded-full bg-yellow-400/80" />
+          <span className="h-3 w-3 rounded-full bg-green-400/80" />
+          <span className="ml-2 font-mono text-xs text-white/60">
+            dung@portfolio: ~
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setTerminalOpen(false)}
+          aria-label="Đóng terminal"
+          className="rounded-full px-3 py-1 text-sm text-white/60 hover:bg-white/10 hover:text-white"
+        >
+          ✕
+        </button>
+      </div>
+
+      <TerminalBody />
     </div>
   )
 }
