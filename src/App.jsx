@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import Scene from './components/Scene.jsx'
 import Overlay from './components/ui/Overlay.jsx'
 import WorldHUD from './components/ui/WorldHUD.jsx'
+import ErrorBoundary from './components/ui/ErrorBoundary.jsx'
 import { usePortfolioStore } from './store/usePortfolio.js'
 import { useScrollListener, scrollState } from './hooks/useScrollState.js'
 
@@ -33,6 +34,7 @@ export default function App() {
   }, [setActiveSection])
 
   return (
+    <ErrorBoundary>
     <div className="relative min-h-screen w-full bg-ink-950">
       {/* Lớp 3D cố định phía sau */}
       <div className="fixed inset-0 z-0">
@@ -51,5 +53,6 @@ export default function App() {
         Section hiện tại: {activeSection}
       </span>
     </div>
+    </ErrorBoundary>
   )
 }
