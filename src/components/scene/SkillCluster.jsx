@@ -14,6 +14,9 @@ import { getSceneState } from './choreography.js'
  *  - hover  -> phóng to (damp), đổi màu phát sáng, đổi con trỏ chuột,
  *              đồng bộ `hoveredSkill` vào store để UI 2D hiện tooltip
  *  - click  -> đưa section "skills" vào trạng thái active
+ *  - F5: orb cũng sáng khi được CHỌN TỪ UI (thẻ kỹ năng focus/bấm/chạm
+ *    ghi `hoveredSkill` vào store) — đường đi ngược lại cho bàn phím
+ *    và cảm ứng, vì mesh 3D không bao giờ nhận được focus bàn phím.
  *
  * Mọi chuyển động đều dùng `MathUtils.damp` nên độc lập framerate,
  * không bị giật khi tỷ lệ khung hình thay đổi.
@@ -70,6 +73,11 @@ function SkillOrb({ skill, index }) {
   const [hovered, setHovered] = useState(false)
   const setHoveredSkill = usePortfolioStore((s) => s.setHoveredSkill)
   const setActiveSection = usePortfolioStore((s) => s.setActiveSection)
+  // F5: orb sáng khi ĐƯỢC CHỌN TỪ UI (focus/bấm/chạm thẻ kỹ năng) chứ
+  // không chỉ khi chuột hover trực tiếp lên mesh. Selector trả boolean
+  // nên chỉ orb tương ứng re-render khi hoveredSkill đổi.
+  const selectedFromUI = usePortfolioStore((s) => s.hoveredSkill === skill.id)
+  const active = hovered || selectedFromUI
 
   // Con trỏ chuột đổi sang pointer khi hover
   useCursor(hovered, 'pointer', 'auto')
@@ -95,13 +103,13 @@ function SkillOrb({ skill, index }) {
     mesh.rotation.x = time * 0.35 + index
     mesh.rotation.y = time * 0.5 + index * 0.6
 
-    // Scale mượt khi hover
-    const targetScale = hovered ? 1.35 : 1
+    // Scale mượt khi hover hoặc được chọn từ UI (F5: active)
+    const targetScale = active ? 1.35 : 1
     const s = THREE.MathUtils.damp(mesh.scale.x, targetScale, 8, delta)
     mesh.scale.setScalar(s)
 
     // Màu phát sáng mượt
-    const targetColor = hovered ? hotColor : dimColor
+    const targetColor = active ? hotColor : dimColor
     mesh.material.color.lerp(targetColor, 1 - Math.exp(-8 * delta))
     mesh.material.emissive.lerp(baseColor, 1 - Math.exp(-6 * delta))
     // S1: ở section skills, toàn cụm sáng lên (0.45 -> 1.0); ở các
@@ -109,7 +117,7 @@ function SkillOrb({ skill, index }) {
     const sceneState = getSceneState(scrollState.smoothed)
     mesh.material.emissiveIntensity = THREE.MathUtils.damp(
       mesh.material.emissiveIntensity,
-      hovered ? 1.5 : 0.45 + sceneState.orbBoost * 0.55,
+      active ? 1.5 : 0.45 + sceneState.orbBoost * 0.55,
       8,
       delta,
     )
@@ -135,6 +143,14 @@ function SkillOrb({ skill, index }) {
     document
       .getElementById('skills')
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    // F5: cuộn xong thì focus rơi vào thẻ tương ứng (điểm đến có thật
+    // cho bàn phím/trình đọc màn hình, thay vì focus kẹt ở Canvas).
+    // preventScroll để focus không tranh cuộn với scrollIntoView.
+    setTimeout(() => {
+      document
+        .getElementById(`skill-${skill.id}`)
+        ?.focus({ preventScroll: true })
+    }, 700)
   }
 
   return (
