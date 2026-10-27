@@ -112,6 +112,21 @@ export const PROJECTS = [
     stack: ['React', 'Three.js', 'Draco', 'KTX2'],
     accent: '#45d8f0',
     demoLink: 'https://atlas-3d-configurator.vercel.app',
+    // F4: categories dùng cho filter. image = null nghĩa là chưa có
+    // screenshot thật — UI sẽ vẽ cover gradient thay thế, KHÔNG giả
+    // vờ đó là ảnh chụp màn hình. Khi có ảnh thật, đặt đường dẫn vào
+    // đây (vd. '/projects/atlas.jpg' trong public/) là preview + sheet
+    // tự dùng ảnh đó, không cần sửa component.
+    categories: ['WebGL'],
+    image: null,
+    detail: {
+      challenge:
+        'Cần một trình cấu hình sản phẩm 3D chạy thời gian thực trong trình duyệt mà vẫn mượt trên mobile.',
+      approach:
+        'Dựng mesh PBR từ file GLB, LOD tự động theo thiết bị, trì hoãn bóng đổ để giữ khung hình ổn định.',
+      outcomeNote:
+        'Mục tiêu thiết kế (theo mô tả gốc): 60 FPS trên mobile. Đây chưa phải số đo benchmark thực tế — cần đo trước khi ghi thành kết quả.',
+    },
   },
   {
     id: 'nebula',
@@ -122,6 +137,16 @@ export const PROJECTS = [
     stack: ['R3F', 'GLSL', 'Framer Motion'],
     accent: '#b39bff',
     demoLink: 'https://nebula-scroll-story.vercel.app',
+    categories: ['WebGL', 'Motion'],
+    image: null,
+    detail: {
+      challenge:
+        'Kể một câu chuyện bằng scroll: camera phải di chuyển theo trục cuộn, nền shader nebula, chuyển cảnh không bị giật.',
+      approach:
+        'Camera scrub theo scroll, shader nền dạng nebula, chuyển cảnh mượt bằng R3F/GLSL + Framer Motion.',
+      outcomeNote:
+        'Đây là mô tả kỹ thuật của dự án, không phải số đo hiệu năng đã benchmark.',
+    },
   },
   {
     id: 'atlas-ui',
@@ -132,6 +157,16 @@ export const PROJECTS = [
     stack: ['TypeScript', 'Tailwind', 'Radix'],
     accent: '#5eead4',
     demoLink: 'https://meridian-design-system.vercel.app',
+    categories: ['Design System'],
+    image: null,
+    detail: {
+      challenge:
+        'Một design system dùng chung cho 6 sản phẩm nội bộ: token, component và tài liệu phải nhất quán với nhau.',
+      approach:
+        'Token màu dùng chung, component đạt chuẩn a11y, tài liệu tương tác sinh tự động từ TypeScript.',
+      outcomeNote:
+        'Phạm vi (theo mô tả gốc): 6 sản phẩm nội bộ dùng chung.',
+    },
   },
 ]
 
