@@ -4,15 +4,18 @@ import { PROFILE } from '../../data/portfolio.js'
 
 const container = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.09, delayChildren: 0.15 } },
+  show: { transition: { staggerChildren: 0.12, delayChildren: 0.15 } },
 }
 
-const item = {
-  hidden: { opacity: 0, y: 24 },
+// F3 — masked-line rise: mỗi dòng nằm trong một mặt nạ overflow-hidden,
+// nội dung trồi lên từ yPercent 115 (không phải fade cả khối như trước).
+// Duration 1.25s, ease power4.out. Mặt nạ của h1 có padding-bottom để
+// không cắt chân chữ có dấu móc (chữ 'g' trong "Dũng").
+const line = {
+  hidden: { yPercent: 115 },
   show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
+    yPercent: 0,
+    transition: { duration: 1.25, ease: [0.16, 1, 0.3, 1] },
   },
 }
 
@@ -30,35 +33,44 @@ function Hero() {
     <section id="hero" className="flex min-h-[80vh] flex-col justify-center scroll-mt-24">
       <motion.div style={{ opacity: heroOpacity, y: heroY }}>
       <motion.div variants={container} initial="hidden" animate="show">
-        <motion.p
-          variants={item}
-          className="mb-5 font-mono text-xs uppercase tracking-[0.3em] text-brand-400"
-        >
-          Portfolio · 2026
-        </motion.p>
+        <div className="mb-5 overflow-hidden">
+          <motion.p
+            variants={line}
+            className="font-mono text-xs uppercase tracking-[0.3em] text-brand-400"
+          >
+            Portfolio · 2026
+          </motion.p>
+        </div>
 
-        <motion.h1
-          variants={item}
-          className="max-w-3xl text-5xl font-semibold leading-[1.05] tracking-tight md:text-7xl"
-        >
-          <span className="text-gradient">{PROFILE.name}</span>
-        </motion.h1>
+        <div className="overflow-hidden pb-[0.12em]">
+          <motion.h1
+            variants={line}
+            className="max-w-3xl font-display text-5xl font-semibold leading-[1.05] tracking-tight md:text-7xl"
+          >
+            <span className="text-gradient">{PROFILE.name}</span>
+          </motion.h1>
+        </div>
 
-        <motion.p
-          variants={item}
-          className="mt-6 max-w-xl text-lg text-white/60 md:text-xl"
-        >
-          {PROFILE.role}
-        </motion.p>
+        <div className="mt-6 overflow-hidden">
+          <motion.p
+            variants={line}
+            className="max-w-xl text-lg text-white/60 md:text-xl"
+          >
+            {PROFILE.role}
+          </motion.p>
+        </div>
 
-        <motion.p
-          variants={item}
-          className="mt-4 max-w-xl text-base leading-relaxed text-white/45"
-        >
-          {PROFILE.tagline}
-        </motion.p>
+        <div className="mt-4 overflow-hidden">
+          <motion.p
+            variants={line}
+            className="max-w-xl text-base leading-relaxed text-white/45"
+          >
+            {PROFILE.tagline}
+          </motion.p>
+        </div>
 
-        <motion.div variants={item} className="mt-10 flex flex-wrap items-center gap-4">
+        <div className="mt-10 overflow-hidden">
+        <motion.div variants={line} className="flex flex-wrap items-center gap-4">
           <a
             href="#projects"
             className="rounded-full bg-white px-6 py-3 text-sm font-medium text-ink-950 transition-transform hover:scale-[1.03] active:scale-95"
@@ -75,6 +87,7 @@ function Hero() {
             ↓ Cuộn để khám phá
           </span>
         </motion.div>
+        </div>
       </motion.div>
       </motion.div>
     </section>

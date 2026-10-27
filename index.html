@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#07070a" />
+    <!-- F3: font thật — trước đây Inter chỉ ghi tên trong CSS mà không
+         có @font-face hay <link> nào, nên trình duyệt thực chất render
+         font hệ thống. Space Grotesk làm display face cho tên hero,
+         Inter làm body. display=swap để không chặn first paint. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <meta
       name="description"
       content="Portfolio 3D tương tác — React Three Fiber + drei"
