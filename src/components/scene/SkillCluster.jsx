@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { SKILLS } from '../../data/portfolio.js'
 import { scrollState } from '../../hooks/useScrollState.js'
 import { usePortfolioStore } from '../../store/usePortfolio.js'
+import { getSceneState } from './choreography.js'
 
 /**
  * Cụm vật thể đại diện cho các kỹ năng.
@@ -103,9 +104,12 @@ function SkillOrb({ skill, index }) {
     const targetColor = hovered ? hotColor : dimColor
     mesh.material.color.lerp(targetColor, 1 - Math.exp(-8 * delta))
     mesh.material.emissive.lerp(baseColor, 1 - Math.exp(-6 * delta))
+    // S1: ở section skills, toàn cụm sáng lên (0.45 -> 1.0); ở các
+    // section khác cụm lùi về nền để không tranh spotlight với nội dung.
+    const sceneState = getSceneState(scrollState.smoothed)
     mesh.material.emissiveIntensity = THREE.MathUtils.damp(
       mesh.material.emissiveIntensity,
-      hovered ? 1.5 : 0.45,
+      hovered ? 1.5 : 0.45 + sceneState.orbBoost * 0.55,
       8,
       delta,
     )
@@ -126,6 +130,11 @@ function SkillOrb({ skill, index }) {
   const handleClick = (e) => {
     e.stopPropagation()
     setActiveSection('skills')
+    // S1 fix: trước đây click chỉ đổi state mà trang không cuộn,
+    // nên nhìn như không có gì xảy ra. Giờ cuộn thật tới section.
+    document
+      .getElementById('skills')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   return (

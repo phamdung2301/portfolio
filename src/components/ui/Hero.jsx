@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import { PROFILE } from '../../data/portfolio.js'
 
 const container = {
@@ -18,8 +18,17 @@ const item = {
 
 /** Section mở đầu: tên, vai trò và lời giới thiệu ngắn. */
 function Hero() {
+  // S1: hero scrub-out — khi hero cuộn đi, tiêu đề trôi lên + mờ dần
+  // (cinematic exit, scrub theo scroll thật, không phải once:true).
+  // Lớp ngoài này chỉ cầm opacity/y scrub; lớp trong giữ variants
+  // entrance, để 2 driver không tranh cùng 1 property trên cùng 1 element.
+  const { scrollY } = useScroll()
+  const heroOpacity = useTransform(scrollY, [0, 420], [1, 0.15])
+  const heroY = useTransform(scrollY, [0, 420], [0, -70])
+
   return (
     <section id="hero" className="flex min-h-[80vh] flex-col justify-center scroll-mt-24">
+      <motion.div style={{ opacity: heroOpacity, y: heroY }}>
       <motion.div variants={container} initial="hidden" animate="show">
         <motion.p
           variants={item}
@@ -66,6 +75,7 @@ function Hero() {
             ↓ Cuộn để khám phá
           </span>
         </motion.div>
+      </motion.div>
       </motion.div>
     </section>
   )

@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { Float, RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
 import { scrollState } from '../../hooks/useScrollState.js'
+import { getSceneState } from './choreography.js'
 
 /**
  * Vật thể chính: góc làm việc low-poly.
@@ -53,9 +54,21 @@ export default function Workspace() {
       delta,
     )
 
-    // Màn hình: phát sáng nhấp nháy + nghiêng theo scroll
+    // S1: màn hình + đèn bàn đổi mood theo section. Pulse giữ nguyên
+    // nhưng quanh mức nền của section (projects sáng nhất, about mờ nhất),
+    // và màu phát sáng lerp theo màu của section đó.
+    const sceneState = getSceneState(t)
+    const pulse =
+      sceneState.monitor + Math.sin(state.clock.elapsedTime * 2.1) * 0.12
+    materials.screen.emissive.lerp(
+      sceneState.monitorColor,
+      1 - Math.exp(-3 * delta),
+    )
+    materials.accent.emissive.lerp(
+      sceneState.monitorColor,
+      1 - Math.exp(-3 * delta),
+    )
     if (monitor.current) {
-      const pulse = 0.75 + Math.sin(state.clock.elapsedTime * 2.1) * 0.18
       materials.screen.emissiveIntensity = THREE.MathUtils.damp(
         materials.screen.emissiveIntensity,
         pulse,

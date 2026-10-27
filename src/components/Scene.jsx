@@ -10,6 +10,7 @@ import SkillCluster from './scene/SkillCluster.jsx'
 import SceneEnvironment from './scene/SceneEnvironment.jsx'
 import { scrollState } from '../hooks/useScrollState.js'
 import { usePortfolioStore } from '../store/usePortfolio.js'
+import { getSceneState } from './scene/choreography.js'
 
 /**
  * Ghi nhận chất lượng render: khi FPS thấp, hạ DPR để giữ mượt.
@@ -48,16 +49,52 @@ function ScrollSmoother() {
  */
 function Lights() {
   const keyRef = useRef(null)
+  const ambientRef = useRef(null)
+  const rimRef = useRef(null)
+  const cyanRef = useRef(null)
 
-  useFrame(() => {
+  useFrame((_, delta) => {
+    // S1: cường độ ánh sáng đi theo trạng thái của section hiện tại,
+    // damp để không nhảy khi chuyển section.
+    const state = getSceneState(scrollState.smoothed)
+    if (ambientRef.current) {
+      ambientRef.current.intensity = THREE.MathUtils.damp(
+        ambientRef.current.intensity,
+        state.ambient,
+        3,
+        delta,
+      )
+    }
+    if (rimRef.current) {
+      rimRef.current.intensity = THREE.MathUtils.damp(
+        rimRef.current.intensity,
+        state.rim,
+        3,
+        delta,
+      )
+    }
+    if (cyanRef.current) {
+      cyanRef.current.intensity = THREE.MathUtils.damp(
+        cyanRef.current.intensity,
+        state.cyan,
+        3,
+        delta,
+      )
+    }
     if (!keyRef.current) return
     // Key light nhẹ theo camera để vật thể luôn có điểm sáng rõ
     keyRef.current.position.x = 4 + Math.sin(scrollState.smoothed * Math.PI * 2) * 1.5
+    keyRef.current.intensity = THREE.MathUtils.damp(
+      keyRef.current.intensity,
+      state.key,
+      3,
+      delta,
+    )
   })
 
   return (
     <>
-      <ambientLight intensity={0.35} color="#8ea0c8" />
+      <ambientLight ref={ambientRef} intensity={0.35} color="#8ea0c8" />
       <directionalLight
         ref={keyRef}
         position={[4, 6, 3]}
@@ -74,8 +111,8 @@ function Lights() {
         shadow-bias={-0.0005}
       />
       {/* rim light tím từ phía sau, tạo viền sáng cho vật thể */}
-      <pointLight position={[-5, 3, -5]} intensity={22} color="#8a63ff" distance={16} />
-      <pointLight position={[5, -2, -3]} intensity={12} color="#12b8d8" distance={14} />
+      <pointLight ref={rimRef} position={[-5, 3, -5]} intensity={22} color="#8a63ff" distance={16} />
+      <pointLight ref={cyanRef} position={[5, -2, -3]} intensity={12} color="#12b8d8" distance={14} />
     </>
   )
 }
@@ -83,11 +120,74 @@ function Lights() {
 /**
  * Nội dung cảnh 3D. Được bọc trong <group> riêng để dễ bật/tắt theo section.
  */
+/**
+ * S1: sương mù + màu nền đi theo section (damp, không nhảy).
+ * scene.background đã là THREE.Color từ onCreated nên lerp trực tiếp được.
+ */
+function SceneFog() {
+  const { scene } = useThree()
+  useFrame((_, delta) => {
+    const state = getSceneState(scrollState.smoothed)
+    const k = 1 - Math.exp(-3 * delta)
+    if (scene.fog) scene.fog.color.lerp(state.fog, k)
+    if (scene.background && scene.background.isColor) {
+      scene.background.lerp(state.fog, k)
+    }
+  })
+  return null
+}
+
+/**
+ * S1: cột sáng spotlight — neo thị giác của từng section.
+ * Vị trí x đi theo điểm nhìn của camera (hero 0, about -1.8, skills 0,
+ * projects 1.6, contact 0), độ mờ + màu đổi theo section. Đây là vật thể
+ * duy nhất mới thêm vào cảnh, rẻ: 1 cylinder additive, không shadow.
+ */
+function SectionBeam() {
+  const meshRef = useRef(null)
+  const matRef = useRef(null)
+
+  useFrame((_, delta) => {
+    if (!meshRef.current || !matRef.current) return
+    const state = getSceneState(scrollState.smoothed)
+    meshRef.current.position.x = THREE.MathUtils.damp(
+      meshRef.current.position.x,
+      state.beamX,
+      3,
+      delta,
+    )
+    matRef.current.opacity = THREE.MathUtils.damp(
+      matRef.current.opacity,
+      state.beam,
+      3,
+      delta,
+    )
+    matRef.current.color.lerp(state.beamColor, 1 - Math.exp(-3 * delta))
+  })
+
+  return (
+    <mesh ref={meshRef} position={[0, 2.4, 0]}>
+      <cylinderGeometry args={[0.55, 0.9, 4.8, 32, 1, true]} />
+      <meshBasicMaterial
+        ref={matRef}
+        color="#45d8f0"
+        transparent
+        opacity={0.1}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  )
+}
+
 function SceneContent() {
   return (
     <>
       <ScrollSmoother />
       <Lights />
+      <SceneFog />
+      <SectionBeam />
       <CameraRig />
       <SceneEnvironment />
       <Workspace />

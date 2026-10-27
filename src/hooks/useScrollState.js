@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { SECTIONS } from '../data/portfolio.js'
 
 /**
  * Trạng thái scroll dùng chung giữa lớp UI 2D và lớp Canvas 3D.
@@ -14,6 +15,10 @@ export const scrollState = {
   raw: 0,
   smoothed: 0,
   velocity: 0,
+  /** Section whose centre band contains the viewport middle (S1). */
+  section: 'hero',
+  /** Progress 0..1 of the viewport middle inside the current section. */
+  sectionProgress: 0,
 }
 
 /** Đăng ký listener scroll/resize, trả về hàm dọn dẻ. */
@@ -22,6 +27,25 @@ export function attachScrollListener() {
     const doc = document.documentElement
     const max = doc.scrollHeight - window.innerHeight
     scrollState.raw = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0
+
+    // S1: which section is actually on screen — by element position, not
+    // by assuming five equal fifths of the page (the old App.jsx math).
+    // The viewport-middle band is stable at boundaries and survives
+    // font/image load shifts, because it reads live bounding rects.
+    const middle = window.innerHeight * 0.5
+    for (const { id } of SECTIONS) {
+      const el = document.getElementById(id)
+      if (!el) continue
+      const rect = el.getBoundingClientRect()
+      if (rect.top <= middle && rect.bottom >= middle) {
+        scrollState.section = id
+        scrollState.sectionProgress = Math.min(
+          1,
+          Math.max(0, (middle - rect.top) / Math.max(1, rect.height)),
+        )
+        break
+      }
+    }
   }
 
   update()

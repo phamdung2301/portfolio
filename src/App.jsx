@@ -2,8 +2,7 @@ import { useEffect } from 'react'
 import Scene from './components/Scene.jsx'
 import Overlay from './components/ui/Overlay.jsx'
 import { usePortfolioStore } from './store/usePortfolio.js'
-import { useScrollListener } from './hooks/useScrollState.js'
-import { SECTIONS } from './data/portfolio.js'
+import { useScrollListener, scrollState } from './hooks/useScrollState.js'
 
 export default function App() {
   const activeSection = usePortfolioStore((s) => s.activeSection)
@@ -12,16 +11,16 @@ export default function App() {
   // Listener scroll toàn cục (dùng chung cho lớp 3D và lớp 2D)
   useScrollListener()
 
-  // Đồng bộ section active khi người dùng cuộn trang
+  // Đồng bộ section active khi người dùng cuộn trang.
+  // S1: đọc section đã tính từ vị trí thật của từng section trong
+  // useScrollState (không còn chia trang thành 5 phần bằng nhau).
+  // Guard so sánh để tránh re-render Nav mỗi frame scroll.
   useEffect(() => {
     const onScroll = () => {
-      const total = document.documentElement.scrollHeight - window.innerHeight
-      const ratio = total > 0 ? window.scrollY / total : 0
-      const index = Math.min(
-        SECTIONS.length - 1,
-        Math.floor(ratio * SECTIONS.length * 0.999),
-      )
-      setActiveSection(SECTIONS[index].id)
+      const next = scrollState.section || 'hero'
+      if (usePortfolioStore.getState().activeSection !== next) {
+        setActiveSection(next)
+      }
     }
 
     onScroll()
