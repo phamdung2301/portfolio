@@ -9,22 +9,18 @@ import Workspace from './scene/Workspace.jsx'
 import SkillCluster from './scene/SkillCluster.jsx'
 import SceneEnvironment from './scene/SceneEnvironment.jsx'
 import { scrollState } from '../hooks/useScrollState.js'
-import { usePortfolioStore } from '../store/usePortfolio.js'
 import { getSceneState } from './scene/choreography.js'
 
 /**
- * Ghi nhận chất lượng render: khi FPS thấp, hạ DPR để giữ mượt.
- * `quality` được đưa vào store để lớp UI 2D có thể hiển thị chỉ báo.
+ * M5: giữ mượt khi FPS thấp — PerformanceMonitor + AdaptiveDpr tự hạ DPR.
+ * Trước đây onChange còn đẩy `quality` ra store, nhưng không có UI nào
+ * đọc giá trị đó (chỉ ghi, không đọc) nên store update là vô ích. Đã bỏ
+ * coupling với store; cơ chế adaptive của drei vẫn hoạt động qua context
+ * nội bộ của PerformanceMonitor, không cần onChange.
  */
 function QualityGuard() {
-  const setQuality = usePortfolioStore((s) => s.setQuality)
-
   return (
-    <PerformanceMonitor
-      bounds={() => [45, 58]}
-      flipflops={3}
-      onChange={({ factor }) => setQuality(Math.round(factor * 100) / 100)}
-    >
+    <PerformanceMonitor bounds={() => [45, 58]} flipflops={3}>
       <AdaptiveDpr />
     </PerformanceMonitor>
   )

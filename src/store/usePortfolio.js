@@ -17,10 +17,6 @@ export const usePortfolioStore = create((set) => ({
   /** id của skill đang được hover trong không gian 3D */
   hoveredSkill: null,
 
-  /** mức chất lượng render 0..1 do PerformanceMonitor điều khiển */
-  quality: 1,
-
   setActiveSection: (activeSection) => set({ activeSection }),
   setHoveredSkill: (hoveredSkill) => set({ hoveredSkill }),
-  setQuality: (quality) => set({ quality }),
 }))

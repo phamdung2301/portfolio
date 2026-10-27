@@ -14,11 +14,59 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
+    <!-- M5: SEO + social sharing. Mọi giá trị lấy từ data thật của site
+         (tên, vai trò, địa điểm, GitHub). KHÔNG có og:image: chưa có ảnh
+         đại diện/dự án thật, nên không bịa URL ảnh — thêm thẻ og:image
+         khi có asset thật, và đổi twitter:card sang summary_large_image
+         lúc đó. KHÔNG đưa LinkedIn/X vào sameAs: hai link đó trong data
+         hiện chỉ trỏ về trang chủ chung, chưa phải profile thật. -->
+    <meta name="author" content="Phạm Hà Đắc Dũng" />
     <meta
       name="description"
-      content="Portfolio 3D tương tác — React Three Fiber + drei"
+      content="Portfolio 3D tương tác của Phạm Hà Đắc Dũng, Full Stack Web Developer tại Đà Nẵng — giao diện web 3D, React Three Fiber, WebGL và motion."
     />
-    <title>Portfolio · React Three Fiber</title>
+    <link rel="canonical" href="https://portfolio-one-rust-99.vercel.app/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="vi_VN" />
+    <meta property="og:site_name" content="Phạm Hà Đắc Dũng — Portfolio" />
+    <meta property="og:title" content="Phạm Hà Đắc Dũng — Full Stack Web Developer" />
+    <meta
+      property="og:description"
+      content="Portfolio 3D tương tác của Phạm Hà Đắc Dũng, Full Stack Web Developer tại Đà Nẵng — giao diện web 3D, React Three Fiber, WebGL và motion."
+    />
+    <meta property="og:url" content="https://portfolio-one-rust-99.vercel.app/" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Phạm Hà Đắc Dũng — Full Stack Web Developer" />
+    <meta
+      name="twitter:description"
+      content="Portfolio 3D tương tác của Phạm Hà Đắc Dũng, Full Stack Web Developer tại Đà Nẵng — giao diện web 3D, React Three Fiber, WebGL và motion."
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": "Phạm Hà Đắc Dũng",
+        "jobTitle": "Full Stack Web Developer",
+        "url": "https://portfolio-one-rust-99.vercel.app/",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Đà Nẵng",
+          "addressCountry": "VN"
+        },
+        "sameAs": ["https://github.com/phamdung2301"],
+        "knowsAbout": [
+          "React",
+          "Three.js",
+          "WebGL",
+          "GLSL",
+          "Framer Motion",
+          "Tailwind",
+          "Node.js",
+          "Figma"
+        ]
+      }
+    </script>
+    <title>Phạm Hà Đắc Dũng — Full Stack Web Developer</title>
   </head>
   <body class="bg-[#07070a] text-white antialiased">
     <div id="root"></div>
