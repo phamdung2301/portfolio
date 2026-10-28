@@ -879,9 +879,13 @@ function PCTower({ materials }) {
   }
   const fan = (y, fanRef, ringRef) => (
     <group position={[0, y, 0.28]}>
-      <mesh ref={ringRef}>
+      {/* CẢNH BÁO (bug 2026-10-28): ref vòng PHẢI gắn vào material, không
+          phải mesh — mesh không có .color, gọi .color.copy() sẽ throw
+          trong useFrame, frameloop chết lặng, canvas đen mà ErrorBoundary
+          không bắt được (lỗi ngoài render phase). */}
+      <mesh>
         <torusGeometry args={[0.13, 0.02, 10, 24]} />
-        <meshBasicMaterial toneMapped={false} />
+        <meshBasicMaterial ref={ringRef} toneMapped={false} />
       </mesh>
       <group ref={fanRef}>
         <mesh material={materials.panel}>
