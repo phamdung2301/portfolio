@@ -7,6 +7,7 @@ import { getSceneState } from './choreography.js'
 import { usePortfolioStore } from '../../store/usePortfolio.js'
 import { seatRef } from '../world/shared.js'
 import ScreenDisplay from './ScreenDisplay.jsx'
+import { rgbColor, rgbFanSpeed, RGB_MODES, RGB_LABELS } from './rgb.js'
 
 /** Màu màn hình khi terminal trong world đang mở. */
 const TERMINAL_GREEN = new THREE.Color('#22c55e')
@@ -18,15 +19,46 @@ const TERMINAL_GREEN = new THREE.Color('#22c55e')
 export default function Workspace() {
   const root = useRef(null)
   const monitor = useRef(null)
+  const spillRef = useRef(null)
+  const spillColor = useRef(new THREE.Color('#22d3ee'))
   const worldMode = usePortfolioStore((s) => s.worldMode)
   const terminalOpen = usePortfolioStore((s) => s.terminalOpen)
   const seated = usePortfolioStore((s) => s.seated)
   const seatedTab = usePortfolioStore((s) => s.seatedTab)
 
   // Vật liệu dùng chung -> giảm số chương trình shader
-  const materials = useMemo(
-    () => ({
-      desk: new THREE.MeshStandardMaterial({ color: '#1b1b27', roughness: 0.72, metalness: 0.15 }),
+  const materials = useMemo(() => {
+    // S2 (vân gỗ): canvas vẽ tay — nền óc chó tối + sọc vân ngang +
+    // vài sọc sáng mờ. Không file ảnh, không thêm draw call (map trên
+    // chất liệu bàn có sẵn). Tông tối để khớp theme chung, không làm
+    // bàn sáng chói như gỗ sáng trong ảnh tham khảo.
+    const wood = document.createElement('canvas')
+    wood.width = 512
+    wood.height = 256
+    const wctx = wood.getContext('2d')
+    wctx.fillStyle = '#241a12'
+    wctx.fillRect(0, 0, 512, 256)
+    let seed = 20261028
+    const rand = () => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff
+      return seed / 0x7fffffff
+    }
+    for (let i = 0; i < 70; i++) {
+      const y = rand() * 256
+      wctx.strokeStyle =
+        rand() > 0.5 ? 'rgba(0,0,0,0.35)' : 'rgba(214,164,110,0.12)'
+      wctx.lineWidth = 0.6 + rand() * 2.2
+      wctx.beginPath()
+      wctx.moveTo(0, y)
+      wctx.bezierCurveTo(170, y + (rand() - 0.5) * 10, 340, y + (rand() - 0.5) * 10, 512, y)
+      wctx.stroke()
+    }
+    const woodTex = new THREE.CanvasTexture(wood)
+    woodTex.colorSpace = THREE.SRGBColorSpace
+    woodTex.wrapS = woodTex.wrapT = THREE.RepeatWrapping
+    woodTex.repeat.set(2, 1)
+    return {
+      desk: new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.72, metalness: 0.15 }),
       panel: new THREE.MeshStandardMaterial({ color: '#12121b', roughness: 0.55, metalness: 0.4 }),
       metal: new THREE.MeshStandardMaterial({ color: '#2a2a3a', roughness: 0.35, metalness: 0.85 }),
       screen: new THREE.MeshStandardMaterial({
@@ -42,9 +74,8 @@ export default function Workspace() {
         emissiveIntensity: 0.5,
         roughness: 0.4,
       }),
-    }),
-    [],
-  )
+    }
+  }, [])
 
   useFrame((state, delta) => {
     if (!root.current) return
@@ -87,6 +118,21 @@ export default function Workspace() {
       sceneState.monitorColor,
       1 - Math.exp(-3 * delta),
     )
+    // S2 (spill màn hình): tấm mờ trên bàn dưới màn hình, màu theo
+    // trạng thái màn hình (xanh lá khi terminal, cyan còn lại).
+    if (spillRef.current) {
+      spillColor.current.lerp(
+        new THREE.Color(worldMode && terminalActive ? '#22c55e' : '#22d3ee'),
+        1 - Math.exp(-3 * delta),
+      )
+      spillRef.current.color.copy(spillColor.current)
+      spillRef.current.opacity = THREE.MathUtils.damp(
+        spillRef.current.opacity,
+        worldMode && terminalActive ? 0.2 : 0.12,
+        3,
+        delta,
+      )
+    }
     if (monitor.current) {
       materials.screen.emissiveIntensity = THREE.MathUtils.damp(
         materials.screen.emissiveIntensity,
@@ -110,7 +156,24 @@ export default function Workspace() {
       <MonitorAssembly ref={monitor} materials={materials} />
       <Keyboard materials={materials} />
       <DeskLamp materials={materials} />
-      <DecorativeBoxes />
+      <BooksStack materials={materials} />
+      <DeskMat />
+      <Mug materials={materials} />
+      <Plant materials={materials} />
+      <PhoneClock />
+      <FairyLights />
+      <PCTower materials={materials} />
+      {/* Tấm spill ánh màn hình trên mặt bàn (màu/độ mờ cập nhật ở useFrame). */}
+      <mesh position={[0, 1.082, -0.15]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[2.4, 0.8]} />
+        <meshBasicMaterial
+          ref={spillRef}
+          color="#22d3ee"
+          transparent
+          opacity={0.12}
+          depthWrite={false}
+        />
+      </mesh>
       <ChairAssembly materials={materials} />
       <PhotoFrame />
     </group>
@@ -170,6 +233,19 @@ function ChairAssembly({ materials }) {
             castShadow
           >
             <boxGeometry args={[0.08, 0.05, 0.42]} />
+          </mesh>
+        )
+      })}
+      {/* S2: bánh xe ở đầu 5 chấu (chấu dài tới bán kính 0.45) */}
+      {[0, 1, 2, 3, 4].map((i) => {
+        const angle = (i * Math.PI * 2) / 5
+        return (
+          <mesh
+            key={`caster-${i}`}
+            position={[Math.sin(angle) * 0.45, 0.05, Math.cos(angle) * 0.45]}
+            material={materials.metal}
+          >
+            <sphereGeometry args={[0.05, 12, 12]} />
           </mesh>
         )
       })}
@@ -334,6 +410,15 @@ const MonitorAssembly = forwardRef(function MonitorAssembly({ materials }, ref) 
       </mesh>
       {/* S2 (ghế): mặt màn hình code gõ thật thay cho 4 vạch màu tĩnh. */}
       <ScreenDisplay />
+      {/* S2: đèn LED nguồn góc dưới-phải viền + thanh đèn trên đỉnh màn hình */}
+      <mesh position={[1.15, 0.58, 0.06]}>
+        <sphereGeometry args={[0.02, 10, 10]} />
+        <meshBasicMaterial color="#22c55e" toneMapped={false} />
+      </mesh>
+      <mesh position={[0, 2.03, 0]}>
+        <boxGeometry args={[1.2, 0.04, 0.04]} />
+        <meshBasicMaterial color="#fef3c7" toneMapped={false} />
+      </mesh>
     </group>
   )
 })
@@ -360,6 +445,7 @@ function Keyboard({ materials }) {
   const keysRef = useRef(null)
   const spaceRef = useRef(null)
   const glowRef = useRef(null)
+  const stripRef = useRef(null)
 
   // Vị trí từng phím (bỏ 8 ô phím cách ở hàng cuối), tính một lần.
   const keyPositions = useMemo(() => {
@@ -393,19 +479,23 @@ function Keyboard({ materials }) {
 
   useFrame((state) => {
     const t = state.clock.elapsedTime
+    // S2: màu phím theo chế độ RGB chung (đổi bằng cách bấm thùng PC).
+    const mode = usePortfolioStore.getState().rgbMode
     const inst = keysRef.current
     if (inst) {
       keyPositions.forEach(([x], i) => {
-        color.setHSL(((x * 0.55 + t * 0.12) % 1 + 1) % 1, 0.9, 0.55)
-        inst.setColorAt(i, color)
+        inst.setColorAt(i, rgbColor(mode, t, x, color))
       })
       inst.instanceColor.needsUpdate = true
     }
     if (spaceRef.current) {
-      spaceRef.current.color.setHSL((t * 0.12) % 1, 0.9, 0.55)
+      spaceRef.current.color.copy(rgbColor(mode, t, 0, color))
     }
     if (glowRef.current) {
-      glowRef.current.color.setHSL((t * 0.12) % 1, 0.9, 0.55)
+      glowRef.current.color.copy(rgbColor(mode, t, 0, color))
+    }
+    if (stripRef.current) {
+      stripRef.current.color.copy(rgbColor(mode, t, 0, color))
     }
   })
 
@@ -437,69 +527,384 @@ function Keyboard({ materials }) {
         <boxGeometry args={[1.9, 0.02, 0.05]} />
         <meshBasicMaterial ref={glowRef} toneMapped={false} />
       </mesh>
+      {/* S2: 2 phím điểm nhấn accent — Esc (hàng 0, cột 0) và Enter (hàng 2, cột 13) */}
+      <mesh position={[-0.845, 1.167, 0.2]} material={materials.accent}>
+        <boxGeometry args={[0.11, 0.045, 0.09]} />
+      </mesh>
+      <mesh position={[0.845, 1.167, 0.42]} material={materials.accent}>
+        <boxGeometry args={[0.11, 0.045, 0.09]} />
+      </mesh>
+      {/* S2: miếng kê cổ tay trước bàn phím */}
+      <RoundedBox
+        args={[1.9, 0.03, 0.25]}
+        radius={0.02}
+        smoothness={3}
+        material={materials.panel}
+        position={[0, 1.095, 0.88]}
+      />
+      {/* S2: viền LED mép trước bàn, đồng bộ sóng RGB với bàn phím */}
+      <mesh position={[0, 1.0, 1.11]}>
+        <boxGeometry args={[4.6, 0.02, 0.02]} />
+        <meshBasicMaterial ref={stripRef} toneMapped={false} />
+      </mesh>
     </group>
   )
 }
 
 function DeskLamp({ materials }) {
+  // Vũng sáng ấm dưới đèn (canvas radial, mờ dần ra mép).
+  const poolTex = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 128
+    c.height = 128
+    const ctx = c.getContext('2d')
+    const g = ctx.createRadialGradient(64, 64, 4, 64, 64, 64)
+    g.addColorStop(0, 'rgba(251,191,36,0.6)')
+    g.addColorStop(1, 'rgba(251,191,36,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, 128, 128)
+    return new THREE.CanvasTexture(c)
+  }, [])
   return (
-    <Float speed={1.6} rotationIntensity={0.25} floatIntensity={0.4}>
-      <mesh position={[1.85, 1.75, 0.4]} material={materials.accent} castShadow>
-        <sphereGeometry args={[0.14, 20, 20]} />
+    <>
+      <Float speed={1.6} rotationIntensity={0.25} floatIntensity={0.4}>
+        <mesh position={[1.85, 1.75, 0.4]} material={materials.accent} castShadow>
+          <sphereGeometry args={[0.14, 20, 20]} />
+        </mesh>
+        <mesh position={[1.85, 1.28, 0.4]} material={materials.metal} castShadow>
+          <cylinderGeometry args={[0.03, 0.03, 0.8, 12]} />
+        </mesh>
+      </Float>
+      {/* S2: chùm sáng nón từ orb xuống mặt bàn (đứng yên, đỉnh khớp vị trí
+          trung bình của orb) + vũng sáng ấm trên mặt bàn. */}
+      <mesh position={[1.85, 1.42, 0.4]}>
+        <cylinderGeometry args={[0.06, 0.5, 0.65, 24, 1, true]} />
+        <meshBasicMaterial
+          color="#fbbf24"
+          transparent
+          opacity={0.08}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
       </mesh>
-      <mesh position={[1.85, 1.28, 0.4]} material={materials.metal} castShadow>
-        <cylinderGeometry args={[0.03, 0.03, 0.8, 12]} />
+      <mesh position={[1.85, 1.082, 0.4]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.5, 24]} />
+        <meshBasicMaterial map={poolTex} transparent opacity={0.5} depthWrite={false} />
       </mesh>
-    </Float>
+    </>
   )
 }
 
 /**
- * Ba hộp trang trí dùng InstancedMesh để chỉ tốn 1 draw call.
+ * S2 (dressing) — chồng sách thay 3 khối tím bay lơ lửng: sách nằm
+ * trên bàn, xoay lệch nhẹ như đặt vội. Bên trái bàn, trước thùng PC.
  */
-function DecorativeBoxes() {
-  const ref = useRef(null)
-
-  const transforms = useMemo(
-    () => [
-      { position: [-1.85, 1.22, 0.55], scale: [0.42, 0.42, 0.42], rot: 0.3 },
-      { position: [-1.5, 1.5, 0.3], scale: [0.3, 0.3, 0.3], rot: -0.6 },
-      { position: [-2.05, 1.44, 0.2], scale: [0.26, 0.26, 0.26], rot: 0.9 },
-    ],
-    [],
-  )
-
-  useFrame((state) => {
-    if (!ref.current) return
-    const m = new THREE.Matrix4()
-    const q = new THREE.Quaternion()
-    const e = new THREE.Euler()
-    const v = new THREE.Vector3()
-    const s = new THREE.Vector3()
-    const time = state.clock.elapsedTime
-
-    transforms.forEach((t, i) => {
-      e.set(time * 0.3 + t.rot, time * 0.45 + t.rot, time * 0.2)
-      q.setFromEuler(e)
-      v.set(t.position[0], t.position[1] + Math.sin(time * 1.2 + i) * 0.05, t.position[2])
-      s.set(t.scale[0], t.scale[1], t.scale[2])
-      m.compose(v, q, s)
-      ref.current.setMatrixAt(i, m)
-    })
-    ref.current.instanceMatrix.needsUpdate = true
-  })
-
+function BooksStack() {
+  const books = [
+    { size: [0.62, 0.09, 0.45], y: 1.125, rot: 0.12, color: '#7f1d1d' },
+    { size: [0.55, 0.08, 0.42], y: 1.21, rot: -0.08, color: '#164e63' },
+    { size: [0.48, 0.07, 0.4], y: 1.285, rot: 0.2, color: '#3f3f46' },
+  ]
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, transforms.length]} castShadow>
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial
-        color="#b39bff"
-        roughness={0.4}
-        metalness={0.3}
-        emissive="#3a2a66"
-        emissiveIntensity={0.35}
-      />
-    </instancedMesh>
+    <group position={[-1.75, 0, 0.2]}>
+      {books.map((b, i) => (
+        <mesh key={i} position={[0, b.y, 0]} rotation={[0, b.rot, 0]} castShadow>
+          <boxGeometry args={b.size} />
+          <meshStandardMaterial color={b.color} roughness={0.8} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/** S2 — thảm lót bàn dưới bàn phím: nền tối + sọc chéo mờ + viền cyan. */
+function DeskMat() {
+  const texture = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 512
+    c.height = 216
+    const ctx = c.getContext('2d')
+    ctx.fillStyle = '#0f1420'
+    ctx.fillRect(0, 0, 512, 216)
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)'
+    ctx.lineWidth = 1
+    for (let x = -216; x < 512; x += 24) {
+      ctx.beginPath()
+      ctx.moveTo(x, 216)
+      ctx.lineTo(x + 216, 0)
+      ctx.stroke()
+    }
+    ctx.strokeStyle = 'rgba(34,211,238,0.55)'
+    ctx.lineWidth = 4
+    ctx.strokeRect(6, 6, 500, 204)
+    ctx.strokeStyle = 'rgba(34,211,238,0.2)'
+    ctx.lineWidth = 1
+    ctx.strokeRect(14, 14, 484, 188)
+    const tex = new THREE.CanvasTexture(c)
+    tex.colorSpace = THREE.SRGBColorSpace
+    return tex
+  }, [])
+  return (
+    <mesh position={[0, 1.081, 0.42]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[2.6, 1.1]} />
+      <meshStandardMaterial map={texture} roughness={0.9} />
+    </mesh>
+  )
+}
+
+/** S2 — cốc cà phê trái-trước bàn + 3 vệt hơi bay lên theo vòng lặp. */
+function Mug({ materials }) {
+  const steamRefs = useRef([])
+  const steamTex = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 64
+    c.height = 128
+    const ctx = c.getContext('2d')
+    const g = ctx.createRadialGradient(32, 64, 4, 32, 64, 30)
+    g.addColorStop(0, 'rgba(255,255,255,0.8)')
+    g.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, 64, 128)
+    return new THREE.CanvasTexture(c)
+  }, [])
+  useFrame((state) => {
+    const t = state.clock.elapsedTime
+    steamRefs.current.forEach((m, i) => {
+      if (!m) return
+      const p = (t * 0.25 + i / 3) % 1
+      m.position.y = 0.3 + p * 0.35
+      m.position.x = Math.sin(t * 2 + i * 2.1) * 0.02
+      m.material.opacity = 0.35 * (1 - p)
+    })
+  })
+  return (
+    <group position={[-1.15, 1.08, 0.72]}>
+      <mesh position={[0, 0.08, 0]} material={materials.panel} castShadow>
+        <cylinderGeometry args={[0.09, 0.075, 0.16, 20]} />
+      </mesh>
+      <mesh position={[0, 0.162, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.08, 20]} />
+        <meshStandardMaterial color="#3f2d20" roughness={0.6} />
+      </mesh>
+      <mesh position={[0.1, 0.08, 0]} rotation={[0, Math.PI / 2, 0]} material={materials.panel}>
+        <torusGeometry args={[0.055, 0.014, 10, 20]} />
+      </mesh>
+      {[0, 1, 2].map((i) => (
+        <mesh
+          key={i}
+          ref={(el) => {
+            steamRefs.current[i] = el
+          }}
+          position={[0, 0.3, 0]}
+        >
+          <planeGeometry args={[0.09, 0.24]} />
+          <meshBasicMaterial map={steamTex} transparent opacity={0.3} depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/** S2 — chậu cây phải-sau bàn, lá đung đưa nhẹ (1 driver sin). */
+function Plant() {
+  const leaves = useRef(null)
+  useFrame((state) => {
+    if (!leaves.current) return
+    const t = state.clock.elapsedTime
+    leaves.current.rotation.z = Math.sin(t * 1.2) * 0.05
+    leaves.current.rotation.x = Math.sin(t * 0.9) * 0.03
+  })
+  const angles = [0, 1.26, 2.51, 3.77, 5.03]
+  return (
+    <group position={[2.0, 1.08, -0.7]}>
+      <mesh position={[0, 0.11, 0]} castShadow>
+        <cylinderGeometry args={[0.14, 0.11, 0.22, 16]} />
+        <meshStandardMaterial color="#9a3412" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 0.225, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.13, 16]} />
+        <meshStandardMaterial color="#3f2d20" roughness={1} />
+      </mesh>
+      <group ref={leaves} position={[0, 0.22, 0]}>
+        {angles.map((a, i) => (
+          <mesh
+            key={i}
+            position={[Math.sin(a) * 0.05, 0.14, Math.cos(a) * 0.05]}
+            rotation={[Math.cos(a) * 0.5, 0, -Math.sin(a) * 0.5]}
+            scale={[0.55, 1.6, 0.25]}
+          >
+            <sphereGeometry args={[0.09, 10, 10]} />
+            <meshStandardMaterial color={i % 2 ? '#16a34a' : '#22c55e'} roughness={0.7} />
+          </mesh>
+        ))}
+      </group>
+    </group>
+  )
+}
+
+/** S2 — điện thoại nằm trước khung gỗ, màn hình hiện GIỜ THẬT (30s vẽ lại). */
+function PhoneClock() {
+  const { canvas, texture } = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 512
+    c.height = 288
+    const tex = new THREE.CanvasTexture(c)
+    tex.colorSpace = THREE.SRGBColorSpace
+    return { canvas: c, texture: tex }
+  }, [])
+  useEffect(() => {
+    const draw = () => {
+      const ctx = canvas.getContext('2d')
+      const now = new Date()
+      const hh = String(now.getHours()).padStart(2, '0')
+      const mm = String(now.getMinutes()).padStart(2, '0')
+      const date = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}`
+      ctx.fillStyle = '#0b0f1a'
+      ctx.fillRect(0, 0, 512, 288)
+      ctx.fillStyle = '#22d3ee'
+      ctx.beginPath()
+      ctx.arc(452, 40, 10, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 110px ui-monospace, Menlo, monospace'
+      ctx.textAlign = 'center'
+      ctx.fillText(`${hh}:${mm}`, 256, 160)
+      ctx.fillStyle = 'rgba(255,255,255,0.55)'
+      ctx.font = '32px ui-monospace, Menlo, monospace'
+      ctx.fillText(date, 256, 220)
+      texture.needsUpdate = true
+    }
+    draw()
+    const id = setInterval(draw, 30000)
+    return () => clearInterval(id)
+  }, [canvas, texture])
+  return (
+    <group position={[1.3, 1.09, 0.85]} rotation={[0, -0.3, 0]}>
+      <mesh position={[0, 0.01, 0]} castShadow>
+        <boxGeometry args={[0.3, 0.02, 0.16]} />
+        <meshStandardMaterial color="#111118" roughness={0.4} metalness={0.4} />
+      </mesh>
+      <mesh position={[0, 0.021, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.28, 0.14]} />
+        <meshBasicMaterial map={texture} toneMapped={false} />
+      </mesh>
+    </group>
+  )
+}
+
+/** S2 — dây đèn fairy vắt ngang mép sau bàn: 2 cột + dây võng + 14 bóng ấm. */
+function FairyLights() {
+  const bulbsRef = useRef(null)
+  const glowRef = useRef(null)
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+  const { curve, bulbPoints } = useMemo(() => {
+    const cur = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-2.2, 1.48, -1.0),
+      new THREE.Vector3(-1.1, 1.3, -1.0),
+      new THREE.Vector3(0, 1.26, -1.0),
+      new THREE.Vector3(1.1, 1.3, -1.0),
+      new THREE.Vector3(2.2, 1.48, -1.0),
+    ])
+    const bp = []
+    for (let i = 0; i < 14; i++) bp.push(cur.getPoint(i / 13))
+    return { curve: cur, bulbPoints: bp }
+  }, [])
+  const tubeGeo = useMemo(() => new THREE.TubeGeometry(curve, 32, 0.008, 6), [curve])
+  useEffect(() => {
+    const inst = bulbsRef.current
+    if (!inst) return
+    bulbPoints.forEach((p, i) => {
+      dummy.position.copy(p)
+      dummy.position.y -= 0.045
+      dummy.updateMatrix()
+      inst.setMatrixAt(i, dummy.matrix)
+    })
+    inst.instanceMatrix.needsUpdate = true
+  }, [bulbPoints, dummy])
+  useFrame((state) => {
+    if (glowRef.current) {
+      glowRef.current.color.setHSL(0.11, 0.9, 0.55 + 0.1 * Math.sin(state.clock.elapsedTime * 2))
+    }
+  })
+  return (
+    <group>
+      {[-2.2, 2.2].map((x) => (
+        <mesh key={x} position={[x, 1.28, -1.0]}>
+          <cylinderGeometry args={[0.02, 0.02, 0.4, 8]} />
+          <meshStandardMaterial color="#2a2a3a" roughness={0.5} metalness={0.6} />
+        </mesh>
+      ))}
+      <mesh geometry={tubeGeo}>
+        <meshBasicMaterial color="#1f2937" />
+      </mesh>
+      <instancedMesh ref={bulbsRef} args={[undefined, undefined, bulbPoints.length]} frustumCulled={false}>
+        <sphereGeometry args={[0.035, 10, 10]} />
+        <meshBasicMaterial ref={glowRef} color="#fbbf24" toneMapped={false} />
+      </instancedMesh>
+    </group>
+  )
+}
+
+/**
+ * S2 — thùng PC trái-sau bàn: 2 quạt RGB mặt trước (vòng + cánh xoay),
+ * mặt kính bên hắt sáng đồng bộ. Bấm thùng trong world để đổi chế độ
+ * RGB chung (sóng → thở → tắt); ở scroll mode bấm không có tác dụng
+ * (Overlay chặn click vào canvas, trừ nút vào world ở hero).
+ */
+function PCTower({ materials }) {
+  const fan1 = useRef(null)
+  const fan2 = useRef(null)
+  const ring1 = useRef(null)
+  const ring2 = useRef(null)
+  const sideGlow = useRef(null)
+  const color = useMemo(() => new THREE.Color(), [])
+  useFrame((state, delta) => {
+    const mode = usePortfolioStore.getState().rgbMode
+    const t = state.clock.elapsedTime
+    const speed = rgbFanSpeed(mode)
+    if (fan1.current) fan1.current.rotation.z += speed * delta
+    if (fan2.current) fan2.current.rotation.z += speed * delta
+    if (ring1.current) ring1.current.color.copy(rgbColor(mode, t, 0.2, color))
+    if (ring2.current) ring2.current.color.copy(rgbColor(mode, t, 0.5, color))
+    if (sideGlow.current) sideGlow.current.color.copy(rgbColor(mode, t, 0.8, color))
+  })
+  const cycle = (e) => {
+    e.stopPropagation()
+    const st = usePortfolioStore.getState()
+    if (!st.worldMode) return
+    const next = RGB_MODES[(RGB_MODES.indexOf(st.rgbMode) + 1) % RGB_MODES.length]
+    st.setRgbMode(next)
+    st.setWorldToast(`Chế độ RGB: ${RGB_LABELS[next]}`)
+  }
+  const fan = (y, fanRef, ringRef) => (
+    <group position={[0, y, 0.28]}>
+      <mesh ref={ringRef}>
+        <torusGeometry args={[0.13, 0.02, 10, 24]} />
+        <meshBasicMaterial toneMapped={false} />
+      </mesh>
+      <group ref={fanRef}>
+        <mesh material={materials.panel}>
+          <boxGeometry args={[0.2, 0.04, 0.01]} />
+        </mesh>
+        <mesh material={materials.panel}>
+          <boxGeometry args={[0.04, 0.2, 0.01]} />
+        </mesh>
+      </group>
+    </group>
+  )
+  return (
+    <group position={[-1.95, 1.08, -0.55]} onClick={cycle}>
+      <mesh position={[0, 0.525, 0]} material={materials.panel} castShadow>
+        <boxGeometry args={[0.55, 1.05, 0.55]} />
+      </mesh>
+      {fan(0.75, fan1, ring1)}
+      {fan(0.35, fan2, ring2)}
+      <mesh position={[0.28, 0.525, 0]} rotation={[0, Math.PI / 2, 0]}>
+        <planeGeometry args={[0.45, 0.9]} />
+        <meshBasicMaterial ref={sideGlow} transparent opacity={0.25} toneMapped={false} depthWrite={false} />
+      </mesh>
+    </group>
   )
 }
 

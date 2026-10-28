@@ -46,6 +46,11 @@ export const usePortfolioStore = create((set) => ({
   /** card visit (khung ảnh) đang mở hay không */
   photoCardOpen: false,
 
+  // ---- S2 (workspace dressing) — chế độ đèn RGB chung cho bàn phím,
+  // viền bàn, quạt PC: 'wave' (sóng cầu vồng) | 'breath' (thở một màu)
+  // | 'off' (tắt đèn). Đổi bằng cách bấm thùng PC trong world.
+  rgbMode: 'wave',
+
   setWorldMode: (worldMode) => set({ worldMode }),
   collectSkill: (skillId) =>
     set((s) =>
@@ -62,4 +67,5 @@ export const usePortfolioStore = create((set) => ({
   setSeatedTab: (seatedTab) => set({ seatedTab }),
   setComputerOpen: (computerOpen) => set({ computerOpen }),
   setPhotoCardOpen: (photoCardOpen) => set({ photoCardOpen }),
+  setRgbMode: (rgbMode) => set({ rgbMode }),
 }))
