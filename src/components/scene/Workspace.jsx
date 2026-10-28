@@ -781,7 +781,7 @@ function Mug({ materials }) {
     })
   })
   return (
-    <group position={[-1.15, 1.08, 0.72]}>
+    <group position={[-1.15, 1.08, 0.85]}>
       <mesh position={[0, 0.08, 0]} material={materials.panel} castShadow>
         <cylinderGeometry args={[0.09, 0.075, 0.16, 20]} />
       </mesh>
@@ -972,10 +972,26 @@ function LaptopOnStand({ materials }) {
     return () => clearInterval(id)
   }, [canvas, texture])
   return (
-    <group position={[-1.78, 1.08, 0.5]}>
-      {/* Kệ nâng 0.25 */}
-      <mesh position={[0, 0.125, 0]} material={materials.metal} castShadow>
-        <boxGeometry args={[0.95, 0.25, 0.65]} />
+    // Xoay nhẹ 0.35 rad (~20°) về phía ghế để màn laptop đón người ngồi;
+    // chân đế xoay theo nhóm nên khe hở với cốc phải tính lại (cốc đã
+    // dời ra trước z 0.72 → 0.85 để giữ ~0.17 khe hở).
+    <group position={[-1.78, 1.08, 0.48]} rotation={[0, 0.35, 0]}>
+      {/* Đế chữ Z nhìn nghiêng (giữ nguyên chiều cao 0.25 để màn laptop
+          không đổi độ cao): tấm đáy nằm trên bàn, tấm chéo lên sau,
+          tấm trên đỡ laptop — bên dưới thoáng như đế tản nhiệt thật. */}
+      <mesh position={[0, 0.02, 0.02]} material={materials.metal} castShadow>
+        <boxGeometry args={[0.9, 0.04, 0.6]} />
+      </mesh>
+      <mesh
+        position={[0, 0.125, 0.05]}
+        rotation={[0.387, 0, 0]}
+        material={materials.metal}
+        castShadow
+      >
+        <boxGeometry args={[0.9, 0.035, 0.45]} />
+      </mesh>
+      <mesh position={[0, 0.23, -0.02]} material={materials.metal} castShadow>
+        <boxGeometry args={[0.9, 0.04, 0.6]} />
       </mesh>
       {/* Đế laptop */}
       <mesh position={[0, 0.26, 0.02]} material={materials.panel} castShadow>

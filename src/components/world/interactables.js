@@ -69,7 +69,7 @@ export const PC_SPOT = {
 export const MUG_SPOT = {
   id: 'mug',
   label: 'Cốc cà phê — Nhấp một ngụm',
-  position: [-1.15, 1.16, 0.72],
+  position: [-1.15, 1.16, 0.85],
   radius: 2.6,
 }
 
