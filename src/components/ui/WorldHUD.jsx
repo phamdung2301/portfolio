@@ -208,7 +208,8 @@ export default function WorldHUD() {
         !st.terminalOpen &&
         !st.projectDetailId &&
         !st.photoCardOpen &&
-        !st.computerOpen
+        !st.computerOpen &&
+        !st.screenTermActive
       ) {
         const targetId = st.gazeTarget || (!st.seated ? st.nearby : null)
         if (targetId) interactWith(targetId)

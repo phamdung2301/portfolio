@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { PROFILE, PROJECTS } from '../../data/portfolio.js'
+import { PROFILE, PROJECTS, SKILLS } from '../../data/portfolio.js'
 import { usePortfolioStore } from '../../store/usePortfolio.js'
 import { gameScoreRef } from '../world/shared.js'
 
@@ -24,7 +24,11 @@ import { gameScoreRef } from '../world/shared.js'
  *    WorldPlayer.jsx, Workspace.jsx), thanh trạng thái có giờ thật.
  *    Tab đang mở là state nội bộ của component (C5: bấm lên tab hoặc
  *    hàng cây project trên màn sẽ đổi tab ngay trên màn 3D).
- *  - terminal: prompt + con trỏ nhấp nháy (C6 nối gõ phím vào đây).
+ *  - terminal: prompt + con trỏ nhấp nháy. C6: khi ngồi + tab Terminal
+ *    + lớp phủ máy tính đóng, phím gõ đi thẳng vào terminal trên màn
+ *    (lệnh rút gọn từ dữ liệu thật: help/about/skills/projects/time/
+ *    clear); đồng thời cờ screenTermActive chặn phím E tương tác để
+ *    gõ "help" không vô tình kích hoạt vật đang nhìn.
  *  - game: tên game + điểm Flappy hiện tại (đọc từ gameScoreRef).
  *  - projects/contact: tiêu đề + thông tin chung (không vẽ số điện thoại
  *    lên màn hình nền — số chỉ xuất hiện trên card visit khi mở).
@@ -190,9 +194,76 @@ export default function ScreenDisplay({
   const seated = usePortfolioStore((s) => s.seated)
   const seatedTab = usePortfolioStore((s) => s.seatedTab)
   const terminalOpen = usePortfolioStore((s) => s.terminalOpen)
+  const computerOpen = usePortfolioStore((s) => s.computerOpen)
   const worldMode = usePortfolioStore((s) => s.worldMode)
   // Tab IntelliJ đang mở (state nội bộ; C5 nối click trên màn vào đây).
   const [activeFile, setActiveFile] = useState('rgb')
+
+  // C6: terminal trên màn 3D chỉ nhận phím khi ngồi + tab Terminal +
+  // lớp phủ máy tính đóng. Khi đứng + terminal overlay mở, phím thuộc
+  // về overlay (không gõ trùng hai nơi).
+  const termActive = seated && seatedTab === 'terminal' && !computerOpen
+  const [termLines, setTermLines] = useState([
+    { kind: 'out', text: 'Terminal màn 3D — gõ help để xem lệnh.' },
+  ])
+  const [termInput, setTermInput] = useState('')
+  const termInputRef = useRef('')
+  const setScreenTermActive = usePortfolioStore((s) => s.setScreenTermActive)
+  useEffect(() => {
+    setScreenTermActive(termActive)
+    return () => setScreenTermActive(false)
+  }, [termActive, setScreenTermActive])
+  useEffect(() => {
+    if (!termActive) return undefined
+    const runCommand = (raw) => {
+      const cmd = raw.trim().toLowerCase()
+      const echo = { kind: 'in', text: `dung@portfolio:~$ ${raw}` }
+      if (!cmd) {
+        setTermLines((p) => [...p, echo])
+        return
+      }
+      if (cmd === 'clear') {
+        setTermLines([])
+        return
+      }
+      let out
+      if (cmd === 'help')
+        out = ['Lệnh: help, about, skills, projects, time, clear']
+      else if (cmd === 'about')
+        out = [`${PROFILE.name} — ${PROFILE.role} · ${PROFILE.location}`]
+      else if (cmd === 'skills')
+        out = SKILLS.map((s) => `• ${s.name} — ${s.level}%`)
+      else if (cmd === 'projects')
+        out = PROJECTS.map((p) => `• ${p.title} (${p.year})`)
+      else if (cmd === 'time') out = [new Date().toLocaleTimeString('vi-VN')]
+      else out = [`Chưa có lệnh "${cmd}" trên màn 3D — gõ help.`]
+      setTermLines((p) => [
+        ...p,
+        echo,
+        ...out.map((text) => ({ kind: 'out', text })),
+      ])
+    }
+    const onKey = (e) => {
+      const target = e.target
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA'))
+        return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        runCommand(termInputRef.current)
+        termInputRef.current = ''
+        setTermInput('')
+      } else if (e.key === 'Backspace') {
+        termInputRef.current = termInputRef.current.slice(0, -1)
+        setTermInput(termInputRef.current)
+      } else if (e.key.length === 1) {
+        termInputRef.current += e.key
+        setTermInput(termInputRef.current)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [termActive])
 
   const mode =
     terminalOpen && !seated
@@ -395,10 +466,26 @@ export default function ScreenDisplay({
         ctx.fillText(`${hh}:${mm}`, W - 12, 548)
         ctx.textAlign = 'left'
       } else if (mode === 'terminal') {
-        ctx.font = '30px ui-monospace, Menlo, monospace'
+        ctx.font = '26px ui-monospace, Menlo, monospace'
+        ctx.textBaseline = 'top'
+        ctx.textAlign = 'left'
+        const visible = termLines.slice(-11)
+        visible.forEach((line, i) => {
+          ctx.fillStyle =
+            line.kind === 'in' ? '#4ade80' : 'rgba(255,255,255,0.85)'
+          ctx.fillText(line.text, 48, 56 + i * 40)
+        })
+        const promptY = 56 + visible.length * 40
         ctx.fillStyle = '#4ade80'
-        ctx.fillText('dung@portfolio:~$', 48, 60)
-        if (blink) ctx.fillRect(48, 110, 18, 34)
+        ctx.fillText('dung@portfolio:~$', 48, promptY)
+        const pw = ctx.measureText('dung@portfolio:~$ ').width
+        ctx.fillStyle = 'rgba(255,255,255,0.92)'
+        ctx.fillText(termInput, 48 + pw, promptY)
+        if (blink) {
+          const iw = ctx.measureText(termInput).width
+          ctx.fillStyle = '#4ade80'
+          ctx.fillRect(48 + pw + iw + 4, promptY + 2, 14, 28)
+        }
       } else if (mode === 'game') {
         ctx.textAlign = 'center'
         ctx.fillStyle = 'rgba(255,255,255,0.9)'
@@ -437,7 +524,7 @@ export default function ScreenDisplay({
     draw()
     return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, canvas, texture, activeFile])
+  }, [mode, canvas, texture, activeFile, termLines, termInput])
 
   // C5: bấm trực tiếp lên màn IntelliJ.
   // uv: (0,0) góc dưới-trái → canvas (x = u*1024, y = (1-v)*576).

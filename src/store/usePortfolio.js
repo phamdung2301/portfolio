@@ -43,6 +43,11 @@ export const usePortfolioStore = create((set) => ({
   seatedTab: 'terminal',
   /** cửa sổ máy tính khi ngồi đang mở hay không */
   computerOpen: false,
+  /** true khi terminal trên màn 3D đang nhận phím (ngồi + tab
+      Terminal + lớp phủ máy tính đóng) — HUD dùng để chặn phím E
+      tương tác khi người dùng đang gõ lệnh, tránh gõ "help" mà
+      vô tình kích hoạt vật đang nhìn. */
+  screenTermActive: false,
   /** card visit (khung ảnh) đang mở hay không */
   photoCardOpen: false,
 
@@ -74,6 +79,7 @@ export const usePortfolioStore = create((set) => ({
   setSeated: (seated) => set({ seated }),
   setSeatedTab: (seatedTab) => set({ seatedTab }),
   setComputerOpen: (computerOpen) => set({ computerOpen }),
+  setScreenTermActive: (screenTermActive) => set({ screenTermActive }),
   setPhotoCardOpen: (photoCardOpen) => set({ photoCardOpen }),
   setRgbMode: (rgbMode) => set({ rgbMode }),
   setGazeTarget: (gazeTarget) => set({ gazeTarget }),
