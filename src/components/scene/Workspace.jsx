@@ -152,13 +152,13 @@ export default function Workspace() {
   })
 
   return (
-    <group ref={root} position={[0, 0, 0]}>
+    <>
+      <group ref={root} position={[0, 0, 0]}>
       <DeskTop materials={materials} />
       <DeskLegs materials={materials} />
       <MonitorAssembly ref={monitor} materials={materials} />
       <Keyboard materials={materials} />
       <DeskLamp materials={materials} />
-      <BooksStack materials={materials} />
       <DeskMat />
       <Mug materials={materials} />
       <Plant materials={materials} />
@@ -166,6 +166,8 @@ export default function Workspace() {
       <FairyLights />
       <PCTower materials={materials} />
       <LaptopOnStand materials={materials} />
+      <Notebook />
+      <WaterGlass />
       {/* Tấm spill ánh màn hình trên mặt bàn (màu/độ mờ cập nhật ở useFrame). */}
       <mesh position={[0, 1.082, -0.15]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[3.6, 0.8]} />
@@ -179,7 +181,12 @@ export default function Workspace() {
       </mesh>
       <ChairAssembly materials={materials} />
       <PhotoFrame />
-    </group>
+      </group>
+      {/* Đồ nội thất đứng ngoài nhóm bàn: không xoay theo scroll, chỉ
+          đứng yên như WorldLevel (nhóm bàn xoay tới ~99° khi cuộn). */}
+      <Bookshelf materials={materials} />
+      <NightWindow materials={materials} />
+    </>
   )
 }
 
@@ -605,23 +612,98 @@ function DeskLamp({ materials }) {
 }
 
 /**
- * S2 (dressing) — chồng sách thay 3 khối tím bay lơ lửng: sách nằm
- * trên bàn, xoay lệch nhẹ như đặt vội. Bên trái bàn, trước thùng PC.
+ * Đợt 2 (theo ảnh) — kệ sách đứng bên trái bàn, mặt trước hướng về
+ * bàn (+x). Khung gỗ, 2 ngăn sách đứng, 2 dải LED ấm dưới ván, 2 tượng
+ * trang trí trừu tượng trên nóc (không mô phỏng nhân vật cụ thể).
+ * Đứng NGOÀI nhóm bàn (xem cuối Workspace) nên không xoay theo scroll.
  */
-function BooksStack() {
-  const books = [
-    { size: [0.62, 0.09, 0.45], y: 1.125, rot: 0.12, color: '#7f1d1d' },
-    { size: [0.55, 0.08, 0.42], y: 1.21, rot: -0.08, color: '#164e63' },
-    { size: [0.48, 0.07, 0.4], y: 1.285, rot: 0.2, color: '#3f3f46' },
-  ]
+const SHELF_BOOK_COLORS = [
+  '#7f1d1d',
+  '#164e63',
+  '#3f3f46',
+  '#854d0e',
+  '#14532d',
+  '#1e3a8a',
+  '#831843',
+  '#713f12',
+]
+const SHELF_BOOKS_BOTTOM = [0.34, 0.42, 0.3, 0.38, 0.44, 0.32, 0.4, 0.36]
+const SHELF_BOOKS_MIDDLE = [0.38, 0.3, 0.42, 0.34, 0.4, 0.32, 0.36]
+function Bookshelf({ materials }) {
   return (
-    <group position={[-1.75, 0, 0.2]}>
-      {books.map((b, i) => (
-        <mesh key={i} position={[0, b.y, 0]} rotation={[0, b.rot, 0]} castShadow>
-          <boxGeometry args={b.size} />
-          <meshStandardMaterial color={b.color} roughness={0.8} />
+    <group position={[-3.4, 0, -0.3]}>
+      <mesh position={[-0.2, 1.15, 0]} material={materials.desk} castShadow>
+        <boxGeometry args={[0.04, 2.3, 1.8]} />
+      </mesh>
+      <mesh position={[0, 1.15, -0.86]} material={materials.desk} castShadow>
+        <boxGeometry args={[0.45, 2.3, 0.08]} />
+      </mesh>
+      <mesh position={[0, 1.15, 0.86]} material={materials.desk} castShadow>
+        <boxGeometry args={[0.45, 2.3, 0.08]} />
+      </mesh>
+      <mesh position={[0, 0.04, 0]} material={materials.desk} castShadow>
+        <boxGeometry args={[0.45, 0.08, 1.8]} />
+      </mesh>
+      <mesh position={[0, 1.05, 0]} material={materials.desk} castShadow>
+        <boxGeometry args={[0.45, 0.06, 1.72]} />
+      </mesh>
+      <mesh position={[0, 2.0, 0]} material={materials.desk} castShadow>
+        <boxGeometry args={[0.45, 0.06, 1.72]} />
+      </mesh>
+      {SHELF_BOOKS_BOTTOM.map((h, i) => (
+        <mesh
+          key={i}
+          position={[0, 0.08 + h / 2, -0.62 + i * 0.17]}
+          castShadow
+        >
+          <boxGeometry args={[0.28, h, 0.05]} />
+          <meshStandardMaterial
+            color={SHELF_BOOK_COLORS[i % SHELF_BOOK_COLORS.length]}
+            roughness={0.85}
+          />
         </mesh>
       ))}
+      {SHELF_BOOKS_MIDDLE.map((h, i) => (
+        <mesh
+          key={i}
+          position={[0, 1.08 + h / 2, -0.55 + i * 0.17]}
+          castShadow
+        >
+          <boxGeometry args={[0.28, h, 0.05]} />
+          <meshStandardMaterial
+            color={SHELF_BOOK_COLORS[(i + 3) % SHELF_BOOK_COLORS.length]}
+            roughness={0.85}
+          />
+        </mesh>
+      ))}
+      <mesh position={[0.18, 1.01, 0]}>
+        <boxGeometry args={[0.04, 0.02, 1.6]} />
+        <meshBasicMaterial color="#fbbf24" toneMapped={false} />
+      </mesh>
+      <mesh position={[0.18, 1.96, 0]}>
+        <boxGeometry args={[0.04, 0.02, 1.6]} />
+        <meshBasicMaterial color="#fbbf24" toneMapped={false} />
+      </mesh>
+      <group position={[0, 2.03, -0.4]}>
+        <mesh position={[0, 0.08, 0]} castShadow>
+          <cylinderGeometry args={[0.05, 0.06, 0.16, 12]} />
+          <meshStandardMaterial color="#b91c1c" roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0.2, 0]} castShadow>
+          <sphereGeometry args={[0.06, 12, 12]} />
+          <meshStandardMaterial color="#f59e0b" roughness={0.4} />
+        </mesh>
+      </group>
+      <group position={[0, 2.03, 0.35]}>
+        <mesh position={[0, 0.08, 0]} castShadow>
+          <cylinderGeometry args={[0.05, 0.06, 0.16, 12]} />
+          <meshStandardMaterial color="#16a34a" roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0.2, 0]} castShadow>
+          <sphereGeometry args={[0.06, 12, 12]} />
+          <meshStandardMaterial color="#86efac" roughness={0.4} />
+        </mesh>
+      </group>
     </group>
   )
 }
@@ -806,10 +888,11 @@ function PhoneClock() {
 }
 
 /**
- * Phase 1 — laptop trên stand ở góc phải-sau bàn (ambient: không pill,
- * không click, không spot gaze). Màn hình gõ 4 dòng code THẬT lấy từ
- * rgb.js trong repo, gõ xong giữ 2.5s rồi lặp lại (mẫu gõ như
- * ScreenDisplay nhưng canvas riêng, nhỏ hơn).
+ * Phase 1 — laptop trên stand (ambient: không pill, không click,
+ * không spot gaze). Đợt 3 dời từ phải-sau sang TRÁI-TRƯỚC theo ảnh
+ * ([-1.78, 0.5]: vừa trong mép bàn -2.3, hở thảm 0.005, cách cốc 0.065).
+ * Màn hình gõ 4 dòng code THẬT lấy từ rgb.js trong repo, gõ xong giữ
+ * 2.5s rồi lặp lại (mẫu gõ như ScreenDisplay nhưng canvas riêng, nhỏ hơn).
  */
 const LAPTOP_LINES = [
   'export function rgbColor(mode, t, x, out = _c) {',
@@ -881,7 +964,7 @@ function LaptopOnStand({ materials }) {
     return () => clearInterval(id)
   }, [canvas, texture])
   return (
-    <group position={[1.5, 1.08, -0.6]}>
+    <group position={[-1.78, 1.08, 0.5]}>
       {/* Kệ nâng 0.25 */}
       <mesh position={[0, 0.125, 0]} material={materials.metal} castShadow>
         <boxGeometry args={[0.95, 0.25, 0.65]} />
@@ -971,6 +1054,159 @@ function SecondScreenDisplay() {
       <planeGeometry args={[1.78, 1.0]} />
       <meshBasicMaterial map={texture} toneMapped={false} />
     </mesh>
+  )
+}
+
+/**
+ * Đợt 3 (theo ảnh) — sổ tay mở bên phải bàn phím (trước bàn phím đã có
+ * miếng kê cổ tay nên sổ đặt sang phải, xoay lệch nhẹ như đặt vội).
+ * Bìa nâu, 2 trang mở hơi vểnh, vài dòng chữ + bút đặt chéo.
+ */
+function Notebook() {
+  return (
+    <group position={[1.15, 1.09, 0.35]} rotation={[0, -0.25, 0]}>
+      <mesh position={[0, 0.005, 0]} castShadow>
+        <boxGeometry args={[0.42, 0.012, 0.3]} />
+        <meshStandardMaterial color="#78350f" roughness={0.8} />
+      </mesh>
+      <mesh position={[-0.105, 0.014, 0]} rotation={[0, 0, 0.12]}>
+        <boxGeometry args={[0.2, 0.008, 0.28]} />
+        <meshStandardMaterial color="#fefce8" roughness={0.9} />
+      </mesh>
+      <mesh position={[0.105, 0.014, 0]} rotation={[0, 0, -0.12]}>
+        <boxGeometry args={[0.2, 0.008, 0.28]} />
+        <meshStandardMaterial color="#fefce8" roughness={0.9} />
+      </mesh>
+      {[-0.06, 0, 0.06].map((z, i) => (
+        <mesh key={i} position={[0.105, 0.02, z]} rotation={[0, 0, -0.12]}>
+          <boxGeometry args={[0.14, 0.002, 0.012]} />
+          <meshStandardMaterial color="#94a3b8" roughness={1} />
+        </mesh>
+      ))}
+      <group position={[0.12, 0.025, -0.02]} rotation={[0, 0.5, 0]}>
+        <mesh rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.008, 0.008, 0.16, 8]} />
+          <meshStandardMaterial color="#1e293b" roughness={0.4} />
+        </mesh>
+      </group>
+    </group>
+  )
+}
+
+/** Đợt 3 (theo ảnh) — ly nước bên phải bàn, gần đèn bàn nhưng không chạm cột đèn. */
+function WaterGlass() {
+  return (
+    <group position={[2.05, 1.08, 0.75]}>
+      <mesh position={[0, 0.11, 0]} castShadow>
+        <cylinderGeometry args={[0.07, 0.06, 0.22, 20]} />
+        <meshStandardMaterial
+          color="#bae6fd"
+          transparent
+          opacity={0.35}
+          roughness={0.1}
+        />
+      </mesh>
+      <mesh position={[0, 0.19, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.062, 20]} />
+        <meshStandardMaterial color="#7dd3fc" roughness={0.2} />
+      </mesh>
+    </group>
+  )
+}
+
+/**
+ * Đợt 4 (theo ảnh) — cửa sổ đêm bên phải phòng, đứng ngoài nhóm bàn.
+ * Bầu trời + nhà + cửa sổ sáng vẽ bằng MỘT canvas texture (1 draw call),
+ * khung kim loại + rèm 2 bên. Chỉ phát sáng, không thêm đèn thật.
+ */
+function NightWindow({ materials }) {
+  const texture = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 1024
+    c.height = 512
+    const ctx = c.getContext('2d')
+    const sky = ctx.createLinearGradient(0, 0, 0, 512)
+    sky.addColorStop(0, '#070b1d')
+    sky.addColorStop(0.7, '#1e1b4b')
+    sky.addColorStop(1, '#431407')
+    ctx.fillStyle = sky
+    ctx.fillRect(0, 0, 1024, 512)
+    const glow = ctx.createRadialGradient(820, 90, 10, 820, 90, 110)
+    glow.addColorStop(0, 'rgba(254,243,199,0.5)')
+    glow.addColorStop(1, 'rgba(254,243,199,0)')
+    ctx.fillStyle = glow
+    ctx.fillRect(710, -20, 220, 220)
+    ctx.fillStyle = '#fef3c7'
+    ctx.beginPath()
+    ctx.arc(820, 90, 34, 0, Math.PI * 2)
+    ctx.fill()
+    let seed = 20261028
+    const rand = () => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff
+      return seed / 0x7fffffff
+    }
+    let x = 0
+    while (x < 1024) {
+      const w = 60 + rand() * 90
+      const h = 120 + rand() * 220
+      ctx.fillStyle = '#0f172a'
+      ctx.fillRect(x, 512 - h, w, h)
+      const cols = Math.floor(w / 22)
+      const rows = Math.floor(h / 30)
+      for (let cx = 0; cx < cols; cx++) {
+        for (let cy = 0; cy < rows; cy++) {
+          if (rand() > 0.45) continue
+          ctx.fillStyle =
+            rand() > 0.5
+              ? 'rgba(252,211,77,0.9)'
+              : 'rgba(251,191,36,0.7)'
+          ctx.fillRect(x + 6 + cx * 22, 512 - h + 10 + cy * 30, 9, 12)
+        }
+      }
+      x += w + 8
+    }
+    const tex = new THREE.CanvasTexture(c)
+    tex.colorSpace = THREE.SRGBColorSpace
+    return tex
+  }, [])
+  useEffect(() => {
+    return () => {
+      texture.dispose()
+    }
+  }, [texture])
+  return (
+    <group position={[6.5, 0, -0.5]} rotation={[0, -Math.PI / 2, 0]}>
+      <mesh position={[0, 2.3, 0]}>
+        <planeGeometry args={[5.2, 3.0]} />
+        <meshBasicMaterial map={texture} toneMapped={false} />
+      </mesh>
+      <mesh position={[0, 0.8, 0.02]} material={materials.metal}>
+        <boxGeometry args={[5.2, 0.12, 0.08]} />
+      </mesh>
+      <mesh position={[0, 3.8, 0.02]} material={materials.metal}>
+        <boxGeometry args={[5.2, 0.12, 0.08]} />
+      </mesh>
+      <mesh position={[-2.6, 2.3, 0.02]} material={materials.metal}>
+        <boxGeometry args={[0.12, 3.0, 0.08]} />
+      </mesh>
+      <mesh position={[2.6, 2.3, 0.02]} material={materials.metal}>
+        <boxGeometry args={[0.12, 3.0, 0.08]} />
+      </mesh>
+      <mesh position={[0, 2.3, 0.02]} material={materials.metal}>
+        <boxGeometry args={[0.08, 3.0, 0.06]} />
+      </mesh>
+      <mesh position={[0, 2.3, 0.02]} material={materials.metal}>
+        <boxGeometry args={[5.2, 0.08, 0.06]} />
+      </mesh>
+      <mesh position={[-2.85, 2.3, 0.15]}>
+        <boxGeometry args={[0.5, 3.2, 0.12]} />
+        <meshStandardMaterial color="#44403c" roughness={1} />
+      </mesh>
+      <mesh position={[2.85, 2.3, 0.15]}>
+        <boxGeometry args={[0.5, 3.2, 0.12]} />
+        <meshStandardMaterial color="#44403c" roughness={1} />
+      </mesh>
+    </group>
   )
 }
 

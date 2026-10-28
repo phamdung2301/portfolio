@@ -282,6 +282,37 @@ export default function WorldPlayer() {
           Math.sign(pos.current.z || 1) * DESK_BOX.z
       }
     }
+    // Đợt 2/4: kệ sách trái + cửa sổ phải — cùng luật đẩy theo trục
+    // xuyên ít nhất. Hai hộp này rời hộp bàn (khe hở 0.25 và xa hẳn)
+    // nên không gây giằng co khi đứng ở mép bàn.
+    const EXTRA_BOXES = [
+      { x: [-3.65, -3.15], z: [-1.2, 0.6] },
+      { x: [6.35, 6.65], z: [-3.2, 2.2] },
+    ]
+    for (const box of EXTRA_BOXES) {
+      if (
+        pos.current.x > box.x[0] &&
+        pos.current.x < box.x[1] &&
+        pos.current.z > box.z[0] &&
+        pos.current.z < box.z[1]
+      ) {
+        const nearLeft = pos.current.x - box.x[0] < box.x[1] - pos.current.x
+        const nearBack = pos.current.z - box.z[0] < box.z[1] - pos.current.z
+        const px = Math.min(
+          pos.current.x - box.x[0],
+          box.x[1] - pos.current.x,
+        )
+        const pz = Math.min(
+          pos.current.z - box.z[0],
+          box.z[1] - pos.current.z,
+        )
+        if (px < pz) {
+          pos.current.x = nearLeft ? box.x[0] : box.x[1]
+        } else {
+          pos.current.z = nearBack ? box.z[0] : box.z[1]
+        }
+      }
+    }
 
     // Đặt camera theo yaw/pitch.
     const cp = Math.cos(pitch.current)
