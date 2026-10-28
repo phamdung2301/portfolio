@@ -8,7 +8,7 @@ import { usePortfolioStore } from '../../store/usePortfolio.js'
 import { seatRef } from '../world/shared.js'
 import ScreenDisplay from './ScreenDisplay.jsx'
 import { rgbColor, rgbFanSpeed } from './rgb.js'
-import { SKILLS, PROJECTS } from '../../data/portfolio.js'
+
 import { interactWith } from '../world/actions.js'
 
 /** Màu màn hình khi terminal trong world đang mở. */
@@ -1012,11 +1012,16 @@ function LaptopOnStand({ materials }) {
 }
 
 /**
- * Màn hai đặt cạnh màn chính (theo ảnh, thay cho màn xếp chồng cũ).
- * Chỉ hiển thị dashboard vẽ từ dữ liệu THẬT (SKILLS level + PROJECTS
- * trong portfolio.js) và giờ thật, vẽ lại mỗi 30s như PhoneClock.
+ * Màn hai: trình duyệt đang dev web + panel F12 (vẽ bằng canvas).
+ * Bên trái là trang web thật đang làm — card dự án AURUM MOTORS lấy
+ * từ repo phamdung2301/aurum_motors (README + src/data/cars.ts):
+ * GT ÆON, Grand Tourer · Flagship, 640 HP, 0–100 3,1s, 330 km/h,
+ * 12.800.000.000 ₫, blurb nguyên văn, skin đen #050505 + vàng #d8ae62.
+ * Địa chỉ localhost:5173 là lệnh chạy thật trong README (npm run dev).
+ * Bên phải là DevTools Elements/Styles của chính card đó.
  * Render BÊN TRONG nhóm MonitorAssembly nên click phải chặn lan truyền,
  * nếu không sẽ kích hoạt nhầm onClick mở world/terminal của màn chính.
+ * (C5 nối click lên card → mở repo GitHub; C4 chỉ vẽ nội dung.)
  */
 function SecondScreenDisplay() {
   const { canvas, texture } = useMemo(() => {
@@ -1035,34 +1040,105 @@ function SecondScreenDisplay() {
   useEffect(() => {
     const draw = () => {
       const ctx = canvas.getContext('2d')
-      ctx.fillStyle = '#0b0f1a'
-      ctx.fillRect(0, 0, 640, 360)
-      const now = new Date()
-      const hh = String(now.getHours()).padStart(2, '0')
-      const mm = String(now.getMinutes()).padStart(2, '0')
-      ctx.fillStyle = '#ffffff'
-      ctx.font = 'bold 28px ui-monospace, Menlo, monospace'
+      ctx.textBaseline = 'top'
       ctx.textAlign = 'left'
-      ctx.fillText('TỔNG QUAN', 24, 36)
-      ctx.textAlign = 'right'
-      ctx.fillText(`${hh}:${mm}`, 616, 36)
-      ctx.textAlign = 'left'
-      SKILLS.forEach((s, i) => {
-        const y = 76 + i * 30
-        ctx.fillStyle = 'rgba(255,255,255,0.85)'
-        ctx.font = '20px ui-monospace, Menlo, monospace'
-        ctx.fillText(s.name, 24, y)
-        ctx.fillStyle = 'rgba(255,255,255,0.15)'
-        ctx.fillRect(200, y - 14, 280, 12)
-        ctx.fillStyle = s.accent
-        ctx.fillRect(200, y - 14, (280 * s.level) / 100, 12)
-        ctx.fillStyle = 'rgba(255,255,255,0.6)'
-        ctx.fillText(`${s.level}%`, 492, y)
+      // --- Chrome trình duyệt (0..34) ---
+      ctx.fillStyle = '#1f2937'
+      ctx.fillRect(0, 0, 640, 34)
+      const dots = ['#ff5f57', '#febc2e', '#28c840']
+      dots.forEach((d, i) => {
+        ctx.fillStyle = d
+        ctx.beginPath()
+        ctx.arc(16 + i * 18, 17, 6, 0, Math.PI * 2)
+        ctx.fill()
       })
-      PROJECTS.forEach((p, i) => {
-        ctx.fillStyle = p.accent
-        ctx.font = '18px ui-monospace, Menlo, monospace'
-        ctx.fillText(`• ${p.title} (${p.year})`, 24, 296 + i * 22)
+      ctx.fillStyle = '#111827'
+      ctx.fillRect(60, 6, 168, 24)
+      ctx.fillStyle = '#e5e7eb'
+      ctx.font = '13px ui-monospace, Menlo, monospace'
+      ctx.fillText('AURUM MOTORS — Showroom', 68, 11)
+      ctx.fillStyle = '#0b0f1a'
+      ctx.fillRect(236, 6, 392, 24)
+      ctx.fillStyle = '#9ca3af'
+      ctx.fillText('localhost:5173', 246, 11)
+      // --- Trang web bên trái (0..384) ---
+      ctx.fillStyle = '#050505'
+      ctx.fillRect(0, 34, 384, 326)
+      ctx.fillStyle = '#d8ae62'
+      ctx.font = 'bold 15px Georgia, serif'
+      ctx.fillText('A U R U M', 24, 52)
+      ctx.fillStyle = '#6b7280'
+      ctx.font = '12px ui-monospace, Menlo, monospace'
+      ctx.fillText('Bộ sưu tập    Trải nghiệm    Liên hệ', 120, 54)
+      ctx.fillStyle = '#d8ae62'
+      ctx.font = '13px ui-monospace, Menlo, monospace'
+      ctx.fillText('SHOWROOM Ô TÔ SIÊU SANG', 24, 96)
+      ctx.fillStyle = '#f5f0e6'
+      ctx.font = 'bold 52px Georgia, serif'
+      ctx.fillText('GT ÆON', 24, 116)
+      ctx.fillStyle = '#9ca3af'
+      ctx.font = '14px ui-monospace, Menlo, monospace'
+      ctx.fillText('Grand Tourer · Flagship', 24, 176)
+      ctx.fillStyle = '#d8ae62'
+      ctx.font = 'bold 16px ui-monospace, Menlo, monospace'
+      ctx.fillText('640 HP   ·   0–100: 3,1s   ·   330 km/h', 24, 204)
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 20px ui-monospace, Menlo, monospace'
+      ctx.fillText('12.800.000.000 ₫', 24, 232)
+      ctx.fillStyle = '#9ca3af'
+      ctx.font = '13px ui-monospace, Menlo, monospace'
+      ctx.fillText('Kiệt tác đường dài — 12 xi-lanh, nội thất', 24, 262)
+      ctx.fillText('da Nappa khâu tay 214 giờ.', 24, 280)
+      ctx.fillStyle = '#d8ae62'
+      ctx.fillRect(24, 306, 110, 30)
+      ctx.fillStyle = '#050505'
+      ctx.font = 'bold 14px ui-monospace, Menlo, monospace'
+      ctx.fillText('Đặt lái thử', 38, 314)
+      // --- Panel F12 bên phải (384..640) ---
+      ctx.fillStyle = '#1e1f22'
+      ctx.fillRect(384, 34, 256, 326)
+      ctx.fillStyle = '#4a9eff'
+      ctx.font = '13px ui-monospace, Menlo, monospace'
+      ctx.fillText('Elements', 396, 42)
+      ctx.fillStyle = '#7a7e85'
+      ctx.fillText('Console   Styles', 468, 42)
+      ctx.fillStyle = '#3a3d42'
+      ctx.fillRect(384, 64, 256, 1)
+      ctx.font = '13px ui-monospace, Menlo, monospace'
+      const els = [
+        ['▼ ', '#7a7e85', '<div', '#67e8f9', ' class="showroom">', '#fcd34d'],
+        ['  ▼ ', '#7a7e85', '<div', '#67e8f9', ' class="car-card">', '#fcd34d'],
+        ['    ', '#7a7e85', '<h1>', '#67e8f9', 'GT ÆON</h1>', '#a9b7c6'],
+        ['    ', '#7a7e85', '<p', '#67e8f9', ' class="kind">…</p>', '#fcd34d'],
+        ['    ', '#7a7e85', '<div', '#67e8f9', ' class="specs">…</div>', '#fcd34d'],
+        ['    ', '#7a7e85', '<button>', '#67e8f9', 'Đặt lái thử</button>', '#a9b7c6'],
+      ]
+      els.forEach(([pad, padC, tag, tagC, rest, restC], i) => {
+        const y = 76 + i * 20
+        ctx.fillStyle = padC
+        ctx.fillText(pad, 396, y)
+        const w1 = ctx.measureText(pad).width
+        ctx.fillStyle = tagC
+        ctx.fillText(tag, 396 + w1, y)
+        const w2 = ctx.measureText(tag).width
+        ctx.fillStyle = restC
+        ctx.fillText(rest, 396 + w1 + w2, y)
+      })
+      ctx.fillStyle = '#3a3d42'
+      ctx.fillRect(384, 204, 256, 1)
+      ctx.fillStyle = '#4a9eff'
+      ctx.font = '13px ui-monospace, Menlo, monospace'
+      ctx.fillText('Styles', 396, 212)
+      const styles = [
+        ['.car-card {', '#fcd34d'],
+        ['  background: #050505;', '#a9b7c6'],
+        ['  border: 1px solid #d8ae62;', '#a9b7c6'],
+        ['  color: #f5f0e6;', '#a9b7c6'],
+        ['}', '#fcd34d'],
+      ]
+      styles.forEach(([line, color], i) => {
+        ctx.fillStyle = color
+        ctx.fillText(line, 396, 236 + i * 20)
       })
       texture.needsUpdate = true
     }

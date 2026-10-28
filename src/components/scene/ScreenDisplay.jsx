@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import * as THREE from 'three'
 import { PROFILE, PROJECTS } from '../../data/portfolio.js'
 import { usePortfolioStore } from '../../store/usePortfolio.js'
@@ -12,40 +12,127 @@ import { gameScoreRef } from '../world/shared.js'
  * xanh lá khi terminal mở) vẫn lộ ra phía sau, chữ chỉ nổi lên trên.
  *
  * Chế độ vẽ theo trạng thái (đọc từ store, không giữ state riêng):
- *  - cozy (chế độ cuộn + đứng trong world): cảnh đêm ấm vẽ tay — bầu
- *    trời chàm → cam, trăng, sao nhấp nháy, skyline với cửa sổ sáng
- *    đèn chớp tắt chậm. Vẽ lại mỗi ~300ms, đủ sống động mà không tốn
- *    frame. Đây là "màn hình chờ" mang vibe góc làm việc ấm cúng;
- *    KHÔNG dùng ảnh có bản quyền (Minecraft/anime) — toàn bộ vẽ bằng
- *    canvas, cũng tránh luôn vụ push file nhị phân.
- *  - code (chỉ khi ngồi, tab Code): gõ từng ký tự đoạn snippet demo
- *    (cấu trúc thật của trang, không phải nội dung file nguyên văn),
- *    hết đoạn giữ 2s rồi gõ lại. Chỉ cập nhật texture khi có ký tự mới.
- *  - terminal: prompt + con trỏ nhấp nháy.
+ *  - cozy (chế độ cuộn): cảnh đêm ấm vẽ tay — bầu trời chàm → cam,
+ *    trăng, sao nhấp nháy, skyline với cửa sổ sáng đèn chớp tắt chậm.
+ *    Vẽ lại mỗi ~300ms, đủ sống động mà không tốn frame. Đây là "màn
+ *    hình chờ" mang vibe góc làm việc ấm cúng; KHÔNG dùng ảnh có bản
+ *    quyền (Minecraft/anime) — toàn bộ vẽ bằng canvas, cũng tránh
+ *    luôn vụ push file nhị phân.
+ *  - intellij (đứng trong world + ngồi ở tab Code): giao diện IntelliJ
+ *    Darcula vẽ bằng canvas — thanh menu, cây project (tên file thật),
+ *    3 tab file, editor chi chít code THẬT trích từ repo này (rgb.js,
+ *    WorldPlayer.jsx, Workspace.jsx), thanh trạng thái có giờ thật.
+ *    Tab đang mở là state nội bộ của component (C5 nối click lên tab).
+ *  - terminal: prompt + con trỏ nhấp nháy (C6 nối gõ phím vào đây).
  *  - game: tên game + điểm Flappy hiện tại (đọc từ gameScoreRef).
  *  - projects/contact: tiêu đề + thông tin chung (không vẽ số điện thoại
  *    lên màn hình nền — số chỉ xuất hiện trên card visit khi mở).
  */
-const SNIPPET = [
-  'function Scene() {',
-  '  return (',
-  '    <Canvas shadows>',
-  '      <Workspace />',
-  '      <SkillCluster />',
-  '    </Canvas>',
-  '  )',
-  '}',
+/**
+ * Nội dung editor IntelliJ: code THẬT trích từ repo này (không bịa).
+ * Mỗi file ≤ 20 dòng để vừa khung editor (dòng cao 24px, cao 482px).
+ * Tab hiển thị theo IJ_TABS; tọa độ tab dùng chung với vùng bấm C5.
+ */
+const INTELLIJ_FILES = {
+  rgb: {
+    label: 'rgb.js',
+    lines: [
+      'export function rgbColor(mode, t, x, out) {',
+      "  if (mode === 'off') return out.setRGB(0.05, 0.05, 0.07)",
+      "  if (mode === 'breath') {",
+      '    const b = 0.55 + 0.45 * Math.sin(t * 1.6)',
+      '    return out.setRGB(0.1 * b, 0.5 * b, 0.9 * b)',
+      '  }',
+      '  const hue = (x * 0.35 + t * 0.08) % 1',
+      '  return out.setHSL(hue, 0.85, 0.55)',
+      '}',
+      'export function rgbFanSpeed(mode) {',
+      "  if (mode === 'off') return 0",
+      "  if (mode === 'breath') return 0.6",
+      '  return 1.6',
+      '}',
+      "export const RGB_MODES = ['wave', 'breath', 'off']",
+      'export const RGB_LABELS = {',
+      "  wave: 'Sóng cầu vồng',",
+      "  breath: 'Thở',",
+      "  off: 'Tắt',",
+      '}',
+    ],
+  },
+  worldplayer: {
+    label: 'WorldPlayer.jsx',
+    lines: [
+      'const SEAT_POS = new THREE.Vector3(0, 1.42, 1.9)',
+      'if (seated !== prevSeated.current) {',
+      '  prevSeated.current = seated',
+      '  const to = seated ? SEAT_POS : STAND_POS',
+      '  anim.current = {',
+      '    active: true,',
+      '    t: 0,',
+      '    fromPos: pos.current.clone(),',
+      '    fromYaw: yaw.current,',
+      '    fromPitch: pitch.current,',
+      '    fromY: camera.position.y,',
+      '    toPos: to,',
+      '    toYaw: 0,',
+      '    toPitch: seated ? 0.19 : 0,',
+      '    toY: to.y,',
+      '  }',
+      '}',
+    ],
+  },
+  workspace: {
+    label: 'Workspace.jsx',
+    lines: [
+      '<group position={[-1.0, 0.82, 0]} rotation={[0.08, 0.26, 0]}>',
+      '  <RoundedBox',
+      '    args={[1.9, 1.07, 0.08]}',
+      '    radius={0.05}',
+      '    smoothness={3}',
+      '    material={materials.panel}',
+      '    position={[0, 0, 0]}',
+      '    castShadow',
+      '  />',
+      '  <mesh material={materials.screen} position={[0, 0, 0.05]}>',
+      '    <planeGeometry args={[1.78, 1.0]} />',
+      '  </mesh>',
+      '  <ScreenDisplay position={[0, 0, 0.062]} width={1.78} height={1.0} />',
+      '</group>',
+    ],
+  },
+}
+
+// Tab editor: x/w trên canvas 1024 (dùng chung cho vẽ và vùng bấm C5).
+const IJ_TABS = [
+  { id: 'rgb', x: 220, w: 150 },
+  { id: 'worldplayer', x: 370, w: 190 },
+  { id: 'workspace', x: 560, w: 170 },
 ]
 
-const KEYWORDS = new Set([
+// Hàng cây project tương ứng với từng file (để tô sáng khi mở tab).
+const IJ_TREE_ROW = { workspace: 4, worldplayer: 5, rgb: 7 }
+
+const IJ_KEYWORDS = new Set([
+  'export',
   'function',
   'return',
   'const',
+  'if',
   'import',
   'from',
-  'export',
   'default',
 ])
+
+/** Tô màu kiểu Darcula: từ khóa cam, chuỗi xanh lá, số xanh dương. */
+function ijColor(word) {
+  const clean = word.replace(/[^A-Za-z0-9_]/g, '')
+  if (IJ_KEYWORDS.has(clean)) return '#cc7832'
+  if (word.includes("'") || word.includes('"') || word.includes('`'))
+    return '#6a8759'
+  if (/^\d/.test(clean)) return '#6897bb'
+  if (/^[A-Z]/.test(clean)) return '#ffc66d'
+  return '#a9b7c6'
+}
 
 // Seed cố định để sao/nhà không nhảy vị trí mỗi lần vẽ lại.
 function mulberry32(seed) {
@@ -92,19 +179,7 @@ function hash01(n) {
   return s - Math.floor(s)
 }
 
-function wordColor(word) {
-  const clean = word.replace(/[^A-Za-z0-9_<>/$]/g, '')
-  if (KEYWORDS.has(clean)) return '#67e8f9'
-  if (word.includes('"') || word.includes("'") || word.includes('`'))
-    return '#86efac'
-  if (
-    word.startsWith('<') ||
-    word.startsWith('/') ||
-    /^[A-Z]/.test(clean)
-  )
-    return '#c4b5fd'
-  return 'rgba(255,255,255,0.88)'
-}
+
 
 export default function ScreenDisplay({
   position = [0, 1.28, 0.062],
@@ -114,9 +189,20 @@ export default function ScreenDisplay({
   const seated = usePortfolioStore((s) => s.seated)
   const seatedTab = usePortfolioStore((s) => s.seatedTab)
   const terminalOpen = usePortfolioStore((s) => s.terminalOpen)
+  const worldMode = usePortfolioStore((s) => s.worldMode)
+  // Tab IntelliJ đang mở (state nội bộ; C5 nối click trên màn vào đây).
+  const [activeFile, setActiveFile] = useState('rgb')
 
   const mode =
-    terminalOpen && !seated ? 'terminal' : seated ? seatedTab : 'cozy'
+    terminalOpen && !seated
+      ? 'terminal'
+      : seated
+        ? seatedTab === 'code'
+          ? 'intellij'
+          : seatedTab
+        : worldMode
+          ? 'intellij'
+          : 'cozy'
 
   const { canvas, texture } = useMemo(() => {
     const c = document.createElement('canvas')
@@ -127,8 +213,6 @@ export default function ScreenDisplay({
     tex.anisotropy = 4
     return { canvas: c, texture: tex }
   }, [])
-
-  const typeRef = useRef({ line: 0, char: 0, holdUntil: 0 })
 
   useEffect(() => {
     return () => {
@@ -141,17 +225,15 @@ export default function ScreenDisplay({
     const W = canvas.width
     const H = canvas.height
 
-    const drawLine = (text, y, visibleChars) => {
-      const shown = text.slice(0, visibleChars)
-      const parts = shown.split(/(\s+)/)
-      let x = 48
-      ctx.font = '27px ui-monospace, Menlo, Consolas, monospace'
+    // Vẽ một dòng code IntelliJ: tách theo khoảng trắng, tô từng từ.
+    const drawCodeLine = (text, y) => {
+      const parts = text.split(/(\s+)/)
+      let x = 272
+      ctx.font = '20px ui-monospace, Menlo, Consolas, monospace'
       ctx.textBaseline = 'top'
       for (const part of parts) {
         if (!part) continue
-        ctx.fillStyle = part.trim()
-          ? wordColor(part)
-          : 'rgba(255,255,255,0.88)'
+        ctx.fillStyle = part.trim() ? ijColor(part) : '#a9b7c6'
         ctx.fillText(part, x, y)
         x += ctx.measureText(part).width
       }
@@ -215,41 +297,102 @@ export default function ScreenDisplay({
         // Mặt đất tối phía trước.
         ctx.fillStyle = '#05070f'
         ctx.fillRect(0, 470, W, H - 470)
-      } else if (mode === 'code') {
-        const t = typeRef.current
-        const now = Date.now()
-        if (t.line >= SNIPPET.length) {
-          if (!t.holdUntil) t.holdUntil = now + 2000
-          if (now >= t.holdUntil) {
-            t.line = 0
-            t.char = 0
-            t.holdUntil = 0
+      } else if (mode === 'intellij') {
+        const now = new Date()
+        const hh = String(now.getHours()).padStart(2, '0')
+        const mm = String(now.getMinutes()).padStart(2, '0')
+        const file = INTELLIJ_FILES[activeFile]
+        ctx.textBaseline = 'top'
+        // Thanh menu.
+        ctx.fillStyle = '#2b2d30'
+        ctx.fillRect(0, 0, W, 30)
+        ctx.fillStyle = '#bcbec4'
+        ctx.font = '17px ui-monospace, Menlo, monospace'
+        ctx.fillText(
+          'File   Edit   View   Navigate   Code   Refactor   Run   Tools   VCS   Window   Help',
+          12,
+          6,
+        )
+        ctx.textAlign = 'right'
+        ctx.fillText(`portfolio · main · ${hh}:${mm}`, W - 12, 6)
+        ctx.textAlign = 'left'
+        // Hàng tab (tọa độ khớp IJ_TABS — C5 dùng cùng bảng này).
+        ctx.fillStyle = '#2b2d30'
+        ctx.fillRect(0, 30, W, 28)
+        ctx.font = '17px ui-monospace, Menlo, monospace'
+        for (const tab of IJ_TABS) {
+          const active = tab.id === activeFile
+          ctx.fillStyle = active ? '#1e1f22' : '#2b2d30'
+          ctx.fillRect(tab.x, 30, tab.w, 28)
+          if (active) {
+            ctx.fillStyle = '#4a9eff'
+            ctx.fillRect(tab.x, 30, tab.w, 2)
           }
+          ctx.fillStyle = active ? '#a9b7c6' : '#7a7e85'
+          ctx.fillText(INTELLIJ_FILES[tab.id].label, tab.x + 12, 36)
         }
-        // Thanh cửa sổ giả: 3 chấm + tên file demo.
-        ctx.fillStyle = 'rgba(255,255,255,0.35)'
-        ctx.beginPath()
-        ctx.arc(36, 30, 8, 0, Math.PI * 2)
-        ctx.arc(62, 30, 8, 0, Math.PI * 2)
-        ctx.arc(88, 30, 8, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = 'rgba(255,255,255,0.45)'
-        ctx.font = '22px ui-monospace, Menlo, monospace'
-        ctx.fillText('Scene.jsx — demo', 118, 20)
-
-        SNIPPET.forEach((lineText, i) => {
-          if (i > t.line) return
-          const y = 76 + i * 52
-          ctx.fillStyle = 'rgba(255,255,255,0.30)'
-          ctx.font = '22px ui-monospace, Menlo, monospace'
-          ctx.fillText(String(i + 1), 48, y + 3)
-          const visible = i < t.line ? lineText.length : t.char
-          const endX = drawLine(lineText, y, visible)
-          if (i === t.line && blink && t.line < SNIPPET.length) {
-            ctx.fillStyle = '#67e8f9'
-            ctx.fillRect(endX + 6, y + 2, 14, 30)
+        // Sidebar cây project.
+        ctx.fillStyle = '#2b2d30'
+        ctx.fillRect(0, 58, 220, 482)
+        ctx.fillStyle = '#bcbec4'
+        ctx.font = 'bold 17px ui-monospace, Menlo, monospace'
+        ctx.fillText('Project', 12, 66)
+        const tree = [
+          '▼ portfolio',
+          '  ▼ src',
+          '    ▼ components',
+          '      ▼ scene',
+          '        Workspace.jsx',
+          '        WorldPlayer.jsx',
+          '        ScreenDisplay.jsx',
+          '        rgb.js',
+          '    ▼ data',
+          '      portfolio.js',
+        ]
+        ctx.font = '17px ui-monospace, Menlo, monospace'
+        tree.forEach((row, i) => {
+          const y = 92 + i * 24
+          if (IJ_TREE_ROW[activeFile] === i) {
+            ctx.fillStyle = '#3a3d42'
+            ctx.fillRect(0, y - 2, 220, 22)
           }
+          ctx.fillStyle = '#a9b7c6'
+          ctx.fillText(row, 12, y)
         })
+        // Editor: nền + số dòng + code chi chít.
+        ctx.fillStyle = '#1e1f22'
+        ctx.fillRect(220, 58, W - 220, 482)
+        ctx.font = '20px ui-monospace, Menlo, Consolas, monospace'
+        file.lines.forEach((lineText, i) => {
+          const y = 62 + i * 24
+          ctx.fillStyle = '#606366'
+          ctx.textAlign = 'right'
+          ctx.fillText(String(i + 1), 262, y)
+          ctx.textAlign = 'left'
+          drawCodeLine(lineText, y)
+        })
+        // Con trỏ nhấp nháy cuối dòng cuối.
+        if (blink) {
+          const last = file.lines[file.lines.length - 1]
+          ctx.font = '20px ui-monospace, Menlo, Consolas, monospace'
+          const w = ctx.measureText(last).width
+          ctx.fillStyle = '#a9b7c6'
+          ctx.fillRect(
+            272 + w + 3,
+            62 + (file.lines.length - 1) * 24,
+            10,
+            22,
+          )
+        }
+        // Thanh trạng thái.
+        ctx.fillStyle = '#2b2d30'
+        ctx.fillRect(0, 540, W, 36)
+        ctx.fillStyle = '#bcbec4'
+        ctx.font = '16px ui-monospace, Menlo, monospace'
+        ctx.fillText('main*    UTF-8    JavaScript    Ln 12, Col 8', 12, 548)
+        ctx.textAlign = 'right'
+        ctx.fillText(`${hh}:${mm}`, W - 12, 548)
+        ctx.textAlign = 'left'
       } else if (mode === 'terminal') {
         ctx.font = '30px ui-monospace, Menlo, monospace'
         ctx.fillStyle = '#4ade80'
@@ -286,28 +429,14 @@ export default function ScreenDisplay({
       texture.needsUpdate = true
     }
 
-    // Gõ code: tick nhanh; các mode khác chỉ cần vẽ lại theo nhịp
-    // nhấp nháy/điểm số nên tick chậm hơn nhiều.
-    const interval = mode === 'code' ? 35 : 300
-    const id = setInterval(() => {
-      if (mode === 'code') {
-        const t = typeRef.current
-        if (t.line < SNIPPET.length) {
-          const lineText = SNIPPET[t.line]
-          if (t.char < lineText.length) {
-            t.char += 1
-          } else {
-            t.line += 1
-            t.char = 0
-          }
-        }
-      }
-      draw()
-    }, interval)
+    // IntelliJ: tick 530ms cho con trỏ nhấp nháy + đồng hồ phút;
+    // các mode khác chỉ cần vẽ lại theo nhịp nhấp nháy/điểm số.
+    const interval = mode === 'intellij' ? 530 : 300
+    const id = setInterval(draw, interval)
     draw()
     return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, canvas, texture])
+  }, [mode, canvas, texture, activeFile])
 
   return (
     <mesh position={position}>
