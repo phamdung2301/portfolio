@@ -10,10 +10,15 @@ import { PROJECTS, SKILLS } from '../../data/portfolio.js'
  * dưới đây khớp với vị trí thật trong cảnh. Bán kính hào phóng để bù
  * độ lơ lửng ±0.12 của orb và sai số khi di chuyển.
  */
+/**
+ * Màn đôi cạnh nhau: spot này là tâm màn CHÍNH (trái) — group bàn ở
+ * [0, 1.08, -0.55] cộng tâm panel local [-1.0, 0.98, 0]. Màn hai (phải)
+ * là ambient, không có spot nên nhìn sang đó không hiện pill.
+ */
 export const MONITOR_SPOT = {
   id: 'monitor',
   label: 'Màn hình — Mở terminal',
-  position: [0, 2.0, -0.5],
+  position: [-1.0, 2.06, -0.55],
   radius: 3.4,
 }
 

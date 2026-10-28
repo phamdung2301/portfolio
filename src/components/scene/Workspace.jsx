@@ -166,10 +166,9 @@ export default function Workspace() {
       <FairyLights />
       <PCTower materials={materials} />
       <LaptopOnStand materials={materials} />
-      <SecondMonitor materials={materials} />
       {/* Tấm spill ánh màn hình trên mặt bàn (màu/độ mờ cập nhật ở useFrame). */}
       <mesh position={[0, 1.082, -0.15]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[2.4, 0.8]} />
+        <planeGeometry args={[3.6, 0.8]} />
         <meshBasicMaterial
           ref={spillRef}
           color="#22d3ee"
@@ -381,36 +380,53 @@ const MonitorAssembly = forwardRef(function MonitorAssembly({ materials }, ref) 
         } else setTerminalOpen(true)
       }}
     >
+      {/* Màn đôi cạnh nhau (theo ảnh): chân đế đôi ở giữa bàn, hai tấm
+          1.9×1.07 đối xứng, khe giữa 0.1. Màn chính (trái) giữ ScreenDisplay
+          + click mở world/terminal/máy tính; màn hai (phải) chỉ hiển thị
+          dashboard, click vào nó bị chặn để không kích hoạt nhóm. */}
+      <mesh position={[0, 0.03, -0.05]} material={materials.metal} castShadow>
+        <boxGeometry args={[0.5, 0.06, 0.4]} />
+      </mesh>
+      <mesh position={[0, 0.5, -0.12]} material={materials.metal} castShadow>
+        <boxGeometry args={[0.14, 1.0, 0.14]} />
+      </mesh>
+      <mesh position={[-0.5, 0.98, -0.1]} material={materials.metal} castShadow>
+        <boxGeometry args={[1.0, 0.08, 0.08]} />
+      </mesh>
+      <mesh position={[0.5, 0.98, -0.1]} material={materials.metal} castShadow>
+        <boxGeometry args={[1.0, 0.08, 0.08]} />
+      </mesh>
       <RoundedBox
-        args={[0.12, 0.42, 0.12]}
-        radius={0.03}
-        smoothness={3}
-        material={materials.metal}
-        position={[0, 0.21, 0]}
-        castShadow
-      />
-      <RoundedBox
-        args={[2.5, 1.45, 0.08]}
+        args={[1.9, 1.07, 0.08]}
         radius={0.05}
         smoothness={3}
         material={materials.panel}
-        position={[0, 1.28, 0]}
+        position={[-1.0, 0.98, 0]}
         castShadow
       />
-      <mesh material={materials.screen} position={[0, 1.28, 0.05]}>
-        <planeGeometry args={[2.34, 1.3]} />
+      <mesh material={materials.screen} position={[-1.0, 0.98, 0.05]}>
+        <planeGeometry args={[1.78, 1.0]} />
       </mesh>
       {/* S2 (ghế): mặt màn hình code gõ thật thay cho 4 vạch màu tĩnh. */}
-      <ScreenDisplay />
-      {/* S2: đèn LED nguồn góc dưới-phải viền + thanh đèn trên đỉnh màn hình */}
-      <mesh position={[1.15, 0.58, 0.06]}>
+      <ScreenDisplay position={[-1.0, 0.98, 0.062]} width={1.78} height={1.0} />
+      {/* S2: đèn LED nguồn góc dưới-phải viền + thanh đèn trên đỉnh màn chính */}
+      <mesh position={[-0.15, 0.5, 0.06]}>
         <sphereGeometry args={[0.02, 10, 10]} />
         <meshBasicMaterial color="#22c55e" toneMapped={false} />
       </mesh>
-      <mesh position={[0, 2.03, 0]}>
-        <boxGeometry args={[1.2, 0.04, 0.04]} />
+      <mesh position={[-1.0, 1.56, 0]}>
+        <boxGeometry args={[0.9, 0.04, 0.04]} />
         <meshBasicMaterial color="#fef3c7" toneMapped={false} />
       </mesh>
+      <RoundedBox
+        args={[1.9, 1.07, 0.08]}
+        radius={0.05}
+        smoothness={3}
+        material={materials.panel}
+        position={[1.0, 0.98, 0]}
+        castShadow
+      />
+      <SecondScreenDisplay />
     </group>
   )
 })
@@ -889,14 +905,13 @@ function LaptopOnStand({ materials }) {
 }
 
 /**
- * Phase 2 — màn hai xếp chồng trên màn chính (ambient: không pill,
- * không click). Cột đỡ sau lưng màn chính; tấm 1.8×1.0, tâm y = 3.7
- * (đáy 3.2, cách mép trên màn chính 3.085 một khe 0.115; từ ghế nhìn
- * lên tâm màn là 44.4° nên cần clamp pitch ±0.8 của Phase 0).
- * Dashboard vẽ từ dữ liệu THẬT (SKILLS level + PROJECTS trong
- * portfolio.js) và giờ thật, vẽ lại mỗi 30s như PhoneClock.
+ * Màn hai đặt cạnh màn chính (theo ảnh, thay cho màn xếp chồng cũ).
+ * Chỉ hiển thị dashboard vẽ từ dữ liệu THẬT (SKILLS level + PROJECTS
+ * trong portfolio.js) và giờ thật, vẽ lại mỗi 30s như PhoneClock.
+ * Render BÊN TRONG nhóm MonitorAssembly nên click phải chặn lan truyền,
+ * nếu không sẽ kích hoạt nhầm onClick mở world/terminal của màn chính.
  */
-function SecondMonitor({ materials }) {
+function SecondScreenDisplay() {
   const { canvas, texture } = useMemo(() => {
     const c = document.createElement('canvas')
     c.width = 640
@@ -949,24 +964,13 @@ function SecondMonitor({ materials }) {
     return () => clearInterval(id)
   }, [canvas, texture])
   return (
-    <group>
-      {/* Cột đỡ từ mặt bàn lên sau lưng màn chính. */}
-      <mesh position={[0, 2.39, -0.68]} material={materials.metal} castShadow>
-        <boxGeometry args={[0.1, 2.62, 0.1]} />
-      </mesh>
-      <RoundedBox
-        args={[1.8, 1.0, 0.06]}
-        radius={0.03}
-        smoothness={3}
-        material={materials.panel}
-        position={[0, 3.7, -0.55]}
-        castShadow
-      />
-      <mesh position={[0, 3.7, -0.51]}>
-        <planeGeometry args={[1.68, 0.88]} />
-        <meshBasicMaterial map={texture} toneMapped={false} />
-      </mesh>
-    </group>
+    <mesh
+      position={[1.0, 0.98, 0.052]}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <planeGeometry args={[1.78, 1.0]} />
+      <meshBasicMaterial map={texture} toneMapped={false} />
+    </mesh>
   )
 }
 

@@ -106,7 +106,11 @@ function wordColor(word) {
   return 'rgba(255,255,255,0.88)'
 }
 
-export default function ScreenDisplay() {
+export default function ScreenDisplay({
+  position = [0, 1.28, 0.062],
+  width = 2.34,
+  height = 1.3,
+}) {
   const seated = usePortfolioStore((s) => s.seated)
   const seatedTab = usePortfolioStore((s) => s.seatedTab)
   const terminalOpen = usePortfolioStore((s) => s.terminalOpen)
@@ -306,8 +310,8 @@ export default function ScreenDisplay() {
   }, [mode, canvas, texture])
 
   return (
-    <mesh position={[0, 1.28, 0.062]}>
-      <planeGeometry args={[2.34, 1.3]} />
+    <mesh position={position}>
+      <planeGeometry args={[width, height]} />
       <meshBasicMaterial map={texture} transparent toneMapped={false} />
     </mesh>
   )
