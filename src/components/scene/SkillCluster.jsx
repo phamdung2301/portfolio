@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useCursor } from '@react-three/drei'
 import * as THREE from 'three'
@@ -8,15 +8,33 @@ import { usePortfolioStore } from '../../store/usePortfolio.js'
 import { getSceneState } from './choreography.js'
 
 /**
- * Cụm vật thể đại diện cho các kỹ năng.
+ * Cụm HÀNH TINH đại diện cho các kỹ năng (thay cho khối hình học cũ).
  *
- * Tương tác:
+ * Ánh xạ theo cấp độ = kích thước, màu giữ nguyên accent của kỹ năng
+ * để vẫn nhận ra theo màu cũ; `shape` trong data không còn dùng:
+ *  - React (95) → Sao Mộc (sọc vân khí), Tailwind (92) → Sao Thổ (vành),
+ *  - Three.js (90) → Sao Hải Vương, Framer Motion (88) → Sao Thiên Vương,
+ *  - WebGL (86) → Trái Đất, Node.js (82) → Sao Kim, Figma (80) → Sao Thủy.
+ *  Bốn hành tinh khí có texture sọc vẽ bằng canvas (không ảnh ngoài).
+ *
+ * Vị trí: vành cung cao sau bàn (tâm [0, 3.6, -1.0], bán kính 3.2,
+ * y ≥ 3.38, z ≤ -2.09) lưu trong `SKILLS.position` nên spot thu thập
+ * trong interactables.js tự khớp theo. Từ ghế (mắt y = 1.42), hành tinh
+ * thấp nhất vẫn nằm trên mép trên màn hình (đã tính tia nhìn: điểm
+ * thấp nhất của vành cắt mặt phẳng màn ở y = 2.56 > mép trên 2.435)
+ * nên không che màn, bàn phím hay đồ trên bàn. Trong world mode nhóm
+ * ở tư thế trung tính nên đảm bảo này đứng vững; ở chế độ cuộn nhóm
+ * vẫn xoay theo scroll như cụm cũ (hành tinh là nền trang trí).
+ *
+ * Tương tác giữ nguyên như cũ:
  *  - hover  -> phóng to (damp), đổi màu phát sáng, đổi con trỏ chuột,
  *              đồng bộ `hoveredSkill` vào store để UI 2D hiện tooltip
- *  - click  -> đưa section "skills" vào trạng thái active
- *  - F5: orb cũng sáng khi được CHỌN TỪ UI (thẻ kỹ năng focus/bấm/chạm
- *    ghi `hoveredSkill` vào store) — đường đi ngược lại cho bàn phím
- *    và cảm ứng, vì mesh 3D không bao giờ nhận được focus bàn phím.
+ *  - click  -> đưa section "skills" vào trạng thái active (cuộn) hoặc
+ *              thu thập (world)
+ *  - F5: hành tinh cũng sáng khi được CHỌN TỪ UI (thẻ kỹ năng
+ *    focus/bấm/chạm ghi `hoveredSkill` vào store) — đường đi ngược
+ *    lại cho bàn phím và cảm ứng, vì mesh 3D không bao giờ nhận được
+ *    focus bàn phím.
  *
  * Mọi chuyển động đều dùng `MathUtils.damp` nên độc lập framerate,
  * không bị giật khi tỷ lệ khung hình thay đổi.
@@ -52,31 +70,38 @@ export default function SkillCluster() {
     <group ref={group} position={[0, 0, 0]}>
       {SKILLS.filter((s) => !collectedSkills.includes(s.id)).map(
         (skill, i) => (
-          <SkillOrb key={skill.id} skill={skill} index={i} />
+          <PlanetOrb key={skill.id} skill={skill} index={i} />
         ),
       )}
     </group>
   )
 }
 
-/** Chọn geometry theo `shape` trong dữ liệu. */
-function SkillGeometry({ shape, size }) {
-  switch (shape) {
-    case 'sphere':
-      return <sphereGeometry args={[size, 24, 24]} />
-    case 'tetra':
-      return <tetrahedronGeometry args={[size * 1.25, 0]} />
-    case 'octa':
-      return <octahedronGeometry args={[size * 1.25, 0]} />
-    case 'icosa':
-      return <icosahedronGeometry args={[size * 1.15, 0]} />
-    case 'box':
-    default:
-      return <boxGeometry args={[size * 1.7, size * 1.7, size * 1.7]} />
-  }
+/** Hành tinh khí có sọc vân; hành tinh đá chỉ dùng màu đặc. */
+const GAS_PLANETS = new Set(['react', 'three', 'tailwind', 'motion'])
+
+/** Texture sọc ngang vẽ bằng canvas: nền accent + dải tối/sáng xen kẽ. */
+function bandTexture(accent) {
+  const c = document.createElement('canvas')
+  c.width = 256
+  c.height = 128
+  const ctx = c.getContext('2d')
+  ctx.fillStyle = accent
+  ctx.fillRect(0, 0, 256, 128)
+  const bands = [18, 10, 26, 12, 22, 14, 26]
+  let y = 0
+  bands.forEach((h, i) => {
+    ctx.fillStyle =
+      i % 2 === 0 ? 'rgba(0,0,0,0.20)' : 'rgba(255,255,255,0.12)'
+    ctx.fillRect(0, y, 256, h)
+    y += h
+  })
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
 }
 
-function SkillOrb({ skill, index }) {
+function PlanetOrb({ skill, index }) {
   const meshRef = useRef(null)
   const [hovered, setHovered] = useState(false)
   const setHoveredSkill = usePortfolioStore((s) => s.setHoveredSkill)
@@ -89,6 +114,20 @@ function SkillOrb({ skill, index }) {
 
   // Con trỏ chuột đổi sang pointer khi hover
   useCursor(hovered, 'pointer', 'auto')
+
+  // Hành tinh khí có texture sọc; thu nhỏ 25% so với khối cũ (size × 0.75)
+  // để vành cung không lấn không gian bàn.
+  const planetSize = skill.size * 0.75
+  const bands = useMemo(
+    () => (GAS_PLANETS.has(skill.id) ? bandTexture(skill.accent) : null),
+    [skill.id, skill.accent],
+  )
+  useEffect(
+    () => () => {
+      bands?.dispose()
+    },
+    [bands],
+  )
 
   // Màu gốc và màu khi hover
   const baseColor = useMemo(() => new THREE.Color(skill.accent), [skill.accent])
@@ -180,8 +219,9 @@ function SkillOrb({ skill, index }) {
       onPointerOut={handleOut}
       onClick={handleClick}
     >
-      <SkillGeometry shape={skill.shape} size={skill.size} />
+      <sphereGeometry args={[planetSize, 32, 32]} />
       <meshStandardMaterial
+        map={bands}
         color={dimColor}
         emissive={baseColor}
         emissiveIntensity={0.45}
@@ -190,6 +230,20 @@ function SkillOrb({ skill, index }) {
         transparent
         opacity={0.95}
       />
+      {/* Vành Sao Thổ: con của mesh nên phóng to/thu nhỏ cùng hành tinh
+          khi hover; nghiêng nhẹ cho giống nhìn góc chéo. */}
+      {skill.id === 'tailwind' && (
+        <mesh rotation={[-1.15, 0, 0.2]}>
+          <ringGeometry args={[planetSize * 1.15, planetSize * 1.75, 40]} />
+          <meshBasicMaterial
+            color={skill.accent}
+            transparent
+            opacity={0.65}
+            side={THREE.DoubleSide}
+            toneMapped={false}
+          />
+        </mesh>
+      )}
     </mesh>
   )
 }
