@@ -51,6 +51,14 @@ export const usePortfolioStore = create((set) => ({
   // | 'off' (tắt đèn). Đổi bằng cách bấm thùng PC trong world.
   rgbMode: 'wave',
 
+  // ---- S2 (trải nghiệm gaze) — vật đang nhìn (tâm màn hình) trong
+  // world, để HUD chỉ hiện pill tương tác cho đúng vật đó. null = không
+  // nhìn vật nào. Khác `nearby` (chỉ cần đứng gần, không cần nhìn).
+  gazeTarget: null,
+  // Thời điểm nhấp cà phê gần nhất (ms, Date.now) — Mug đọc để phụt
+  // hơi mạnh trong ~1.8s sau khi nhấp.
+  mugSipAt: 0,
+
   setWorldMode: (worldMode) => set({ worldMode }),
   collectSkill: (skillId) =>
     set((s) =>
@@ -68,4 +76,6 @@ export const usePortfolioStore = create((set) => ({
   setComputerOpen: (computerOpen) => set({ computerOpen }),
   setPhotoCardOpen: (photoCardOpen) => set({ photoCardOpen }),
   setRgbMode: (rgbMode) => set({ rgbMode }),
+  setGazeTarget: (gazeTarget) => set({ gazeTarget }),
+  setMugSipAt: (mugSipAt) => set({ mugSipAt }),
 }))

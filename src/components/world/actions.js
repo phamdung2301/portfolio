@@ -1,5 +1,6 @@
 import { PROFILE, SKILLS } from '../../data/portfolio.js'
 import { usePortfolioStore } from '../../store/usePortfolio.js'
+import { RGB_MODES, RGB_LABELS } from '../scene/rgb.js'
 
 /**
  * S2 — hành động dùng chung cho tương tác trong world, để nút bấm HUD,
@@ -19,23 +20,47 @@ export function interactWith(spotId) {
   const s = usePortfolioStore.getState()
   if (!spotId) return
   if (spotId === 'chair') {
-    // Ngồi xuống: mở máy tính luôn ở tab Terminal (ngồi vào máy là để
-    // dùng máy), terminal standalone không mở kèm để khỏi chồng cửa sổ.
+    // S2 (trải nghiệm gaze): ngồi xuống CHỈ là ngồi xuống — không tự
+    // mở máy tính nữa (máy mở lại đúng tab lần trước khi người dùng
+    // nhìn màn hình + bấm E, như máy ngủ đông). Terminal standalone
+    // đóng để khỏi chồng cửa sổ khi ngồi.
     s.setSeated(true)
-    s.setSeatedTab('terminal')
-    s.setComputerOpen(true)
     s.setTerminalOpen(false)
     return
   }
   if (spotId === 'monitor') {
-    // Khi đang ngồi, màn hình mở máy tính (tab Terminal) thay vì
-    // terminal standalone — tránh hai cửa sổ chồng nhau.
+    // Đang ngồi: mở máy tính ở đúng tab lần trước (không ép tab
+    // Terminal); đang đứng: mở terminal standalone.
     if (s.seated) {
-      s.setSeatedTab('terminal')
       s.setComputerOpen(true)
     } else {
       s.setTerminalOpen(true)
     }
+    return
+  }
+  if (spotId === 'frame') {
+    // Khung ảnh: chỉ mở khi người dùng nhìn + bấm (hoặc chạm) — không
+    // còn rung, không còn dòng nhắc tự hiện khi ngồi.
+    if (!s.worldMode) return
+    s.setPhotoCardOpen(true)
+    return
+  }
+  if (spotId === 'pc') {
+    // Thùng PC: đổi chế độ RGB chung (sóng → thở → tắt), toast báo
+    // tên chế độ. Logic cũ ở PCTower chuyển về đây để E, pill HUD và
+    // click mesh dùng chung một đường.
+    if (!s.worldMode) return
+    const next = RGB_MODES[(RGB_MODES.indexOf(s.rgbMode) + 1) % RGB_MODES.length]
+    s.setRgbMode(next)
+    s.setWorldToast(`Chế độ RGB: ${RGB_LABELS[next]}`)
+    return
+  }
+  if (spotId === 'mug') {
+    // Cốc cà phê: niềm vui nhỏ, không mở cửa sổ nào — hơi nóng phụt
+    // mạnh ~1.8s (Mug đọc mugSipAt) + toast phản hồi sau hành động.
+    if (!s.worldMode) return
+    s.setMugSipAt(Date.now())
+    s.setWorldToast('Nhấp một ngụm cà phê — vẫn còn nóng.')
     return
   }
   if (spotId === 'contact') {

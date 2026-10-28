@@ -39,6 +39,45 @@ const STAND_POS = new THREE.Vector3(0, 1.6, 2.7)
 const BOUND_RADIUS = 9.5
 const DESK_BOX = { x: 2.9, z: 1.6 }
 
+// S2 (trải nghiệm gaze) — vật đang nhìn: góc lệch giữa hướng nhìn và
+// hướng tới tâm vật < 12° và trong bán kính của vật. Không raycast:
+// chỉ tính góc + khoảng cách với tâm vật (rẻ, đủ cho pill gợi ý).
+// Khi ngồi chỉ với tới vật trên bàn; khi đứng với tới mọi vật.
+const GAZE_COS = Math.cos(THREE.MathUtils.degToRad(12))
+const SEATED_GAZE_IDS = ['monitor', 'frame', 'pc', 'mug']
+const _gazeDir = new THREE.Vector3()
+function updateGaze(camera, seated, gazeRef, setGazeTarget) {
+  const st = usePortfolioStore.getState()
+  camera.getWorldDirection(_gazeDir)
+  let best = null
+  let bestScore = Infinity
+  for (const spot of allSpots()) {
+    if (seated && !SEATED_GAZE_IDS.includes(spot.id)) continue
+    if (
+      spot.id.startsWith('skill:') &&
+      st.collectedSkills.includes(spot.id.slice('skill:'.length))
+    ) {
+      continue
+    }
+    const dx = spot.position[0] - camera.position.x
+    const dy = spot.position[1] - camera.position.y
+    const dz = spot.position[2] - camera.position.z
+    const dist = Math.hypot(dx, dy, dz)
+    if (dist > spot.radius) continue
+    const cos = (_gazeDir.x * dx + _gazeDir.y * dy + _gazeDir.z * dz) / dist
+    if (cos < GAZE_COS) continue
+    const score = (1 - cos) * 10 + dist * 0.01
+    if (score < bestScore) {
+      bestScore = score
+      best = spot.id
+    }
+  }
+  if (best !== gazeRef.current) {
+    gazeRef.current = best
+    setGazeTarget(best)
+  }
+}
+
 export default function WorldPlayer() {
   const { camera, gl } = useThree()
   const pos = useRef(new THREE.Vector3(0, EYE_HEIGHT, 6.5))
@@ -48,10 +87,12 @@ export default function WorldPlayer() {
   const dragging = useRef(false)
   const lastPointer = useRef({ x: 0, y: 0 })
   const nearbyRef = useRef(null)
+  const gazeRef = useRef(null)
   const prevSeated = useRef(false)
   const anim = useRef({ active: false, t: 0 })
 
   const setNearby = usePortfolioStore((s) => s.setNearby)
+  const setGazeTarget = usePortfolioStore((s) => s.setGazeTarget)
 
   // Đặt FOV chuẩn khi vào world (CameraRig có thể đã chỉnh FOV theo
   // tốc độ cuộn trước đó).
@@ -163,6 +204,11 @@ export default function WorldPlayer() {
         yaw.current = a.toYaw
         pitch.current = a.toPitch
       }
+      // Đang bay camera thì xóa pill gaze (tránh gợi ý cũ dí theo).
+      if (gazeRef.current !== null) {
+        gazeRef.current = null
+        setGazeTarget(null)
+      }
       return
     }
 
@@ -176,6 +222,7 @@ export default function WorldPlayer() {
         SEAT_POS.y + Math.sin(pitch.current),
         SEAT_POS.z - Math.cos(yaw.current) * cp,
       )
+      updateGaze(camera, true, gazeRef, setGazeTarget)
       return
     }
 
@@ -246,6 +293,9 @@ export default function WorldPlayer() {
       EYE_HEIGHT + dir.y,
       pos.current.z + dir.z,
     )
+
+    // Gaze: vật đang nhìn (chỉ tính khi không bay camera).
+    updateGaze(camera, false, gazeRef, setGazeTarget)
 
     // Proximity: vật gần nhất trong bán kính, bỏ qua skill đã thu thập.
     const collected = st.collectedSkills

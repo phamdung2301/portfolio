@@ -7,7 +7,8 @@ import { getSceneState } from './choreography.js'
 import { usePortfolioStore } from '../../store/usePortfolio.js'
 import { seatRef } from '../world/shared.js'
 import ScreenDisplay from './ScreenDisplay.jsx'
-import { rgbColor, rgbFanSpeed, RGB_MODES, RGB_LABELS } from './rgb.js'
+import { rgbColor, rgbFanSpeed } from './rgb.js'
+import { interactWith } from '../world/actions.js'
 
 /** Màu màn hình khi terminal trong world đang mở. */
 const TERMINAL_GREEN = new THREE.Color('#22c55e')
@@ -208,10 +209,10 @@ function ChairAssembly({ materials }) {
   const sit = (e) => {
     e.stopPropagation()
     const st = usePortfolioStore.getState()
+    // S2 (trải nghiệm gaze): ngồi xuống CHỈ là ngồi xuống — không tự
+    // mở máy tính (đường này dùng chung với actions.js chair branch).
     if (st.worldMode && !st.seated) {
       st.setSeated(true)
-      st.setSeatedTab('terminal')
-      st.setComputerOpen(true)
       st.setTerminalOpen(false)
     }
   }
@@ -290,31 +291,19 @@ function ChairAssembly({ materials }) {
  * nhích y) như tín hiệu "muốn xem". Bấm vào khung trong world →
  * mở card visit.
  */
+/**
+ * S2 (trải nghiệm gaze): khung gỗ đứng yên hoàn toàn — KHÔNG còn rung
+ * khi ngồi, KHÔNG còn dòng nhắc. Ai tò mò nhìn vào + bấm E (hoặc chạm)
+ * mới mở card, qua interactWith('frame') chung với pill HUD.
+ */
 function PhotoFrame() {
-  const frame = useRef(null)
-  const seated = usePortfolioStore((s) => s.seated)
-
-  useFrame((state) => {
-    if (!frame.current) return
-    if (seated) {
-      const t = state.clock.elapsedTime
-      frame.current.rotation.z = Math.sin(t * 10) * 0.02
-      frame.current.position.y = 1.08 + Math.sin(t * 10) * 0.008
-    } else {
-      frame.current.rotation.z = 0
-      frame.current.position.y = 1.08
-    }
-  })
-
   return (
     <group
-      ref={frame}
       position={[1.45, 1.08, 0.45]}
       rotation={[-0.12, -0.25, 0]}
       onClick={(e) => {
         e.stopPropagation()
-        const st = usePortfolioStore.getState()
-        if (st.worldMode) st.setPhotoCardOpen(true)
+        interactWith('frame')
       }}
     >
       <RoundedBox
@@ -379,12 +368,12 @@ const MonitorAssembly = forwardRef(function MonitorAssembly({ materials }, ref) 
       onClick={(e) => {
         e.stopPropagation()
         // S2: màn hình là cổng vào world (chế độ cuộn). Trong world:
-        // đang ngồi → mở máy tính (tab Terminal), tránh chồng cửa sổ
-        // với terminal standalone; đang đứng → mở terminal standalone.
+        // đang ngồi → mở máy tính ở đúng tab lần trước (không ép tab
+        // Terminal — trải nghiệm gaze); đang đứng → terminal standalone.
+        // Đường này dùng chung với actions.js monitor branch.
         const st = usePortfolioStore.getState()
         if (!worldMode) setWorldMode(true)
         else if (st.seated) {
-          st.setSeatedTab('terminal')
           st.setComputerOpen(true)
         } else setTerminalOpen(true)
       }}
@@ -670,12 +659,16 @@ function Mug({ materials }) {
   }, [])
   useFrame((state) => {
     const t = state.clock.elapsedTime
+    // S2 (trải nghiệm gaze): sau khi nhấp (mugSipAt) ~1.8s, hơi bay
+    // nhanh + đậm hơn — phản hồi nhìn thấy được cho hành động nhấp.
+    const burst = Date.now() - usePortfolioStore.getState().mugSipAt < 1800
+    const speed = burst ? 0.9 : 0.25
     steamRefs.current.forEach((m, i) => {
       if (!m) return
-      const p = (t * 0.25 + i / 3) % 1
+      const p = (t * speed + i / 3) % 1
       m.position.y = 0.3 + p * 0.35
       m.position.x = Math.sin(t * 2 + i * 2.1) * 0.02
-      m.material.opacity = 0.35 * (1 - p)
+      m.material.opacity = Math.min(0.6, 0.35 * (1 - p) * (burst ? 1.6 : 1))
     })
   })
   return (
@@ -869,13 +862,11 @@ function PCTower({ materials }) {
     if (ring2.current) ring2.current.color.copy(rgbColor(mode, t, 0.5, color))
     if (sideGlow.current) sideGlow.current.color.copy(rgbColor(mode, t, 0.8, color))
   })
+  // S2 (trải nghiệm gaze): click thùng (cảm ứng) dùng chung đường với
+  // pill gaze + phím E — logic đổi RGB nằm ở actions.js pc branch.
   const cycle = (e) => {
     e.stopPropagation()
-    const st = usePortfolioStore.getState()
-    if (!st.worldMode) return
-    const next = RGB_MODES[(RGB_MODES.indexOf(st.rgbMode) + 1) % RGB_MODES.length]
-    st.setRgbMode(next)
-    st.setWorldToast(`Chế độ RGB: ${RGB_LABELS[next]}`)
+    interactWith('pc')
   }
   const fan = (y, fanRef, ringRef) => (
     <group position={[0, y, 0.28]}>

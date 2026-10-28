@@ -1,4 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+
+// S2 (trải nghiệm gaze): dòng hướng dẫn chỉ hiện 8s trong lần đầu vào
+// world của mỗi lần tải trang — module-level để không hiện lại mỗi lần
+// HUD mount lại (HUD mount mới mỗi lần vào world).
+let hintShownOnce = false
 import { PROJECTS, SKILLS } from '../../data/portfolio.js'
 import { usePortfolioStore } from '../../store/usePortfolio.js'
 import { spotLabel } from '../world/interactables.js'
@@ -83,6 +88,7 @@ function Joystick() {
 export default function WorldHUD() {
   const collectedSkills = usePortfolioStore((s) => s.collectedSkills)
   const nearby = usePortfolioStore((s) => s.nearby)
+  const gazeTarget = usePortfolioStore((s) => s.gazeTarget)
   const terminalOpen = usePortfolioStore((s) => s.terminalOpen)
   const projectDetailId = usePortfolioStore((s) => s.projectDetailId)
   const worldToast = usePortfolioStore((s) => s.worldToast)
@@ -107,6 +113,18 @@ export default function WorldHUD() {
   const [coarsePointer, setCoarsePointer] = useState(false)
   const [completionDismissed, setCompletionDismissed] = useState(false)
   const [showToast, setShowToast] = useState(false)
+  const [showHint, setShowHint] = useState(false)
+
+  // Dòng hướng dẫn: chỉ lần đầu vào world mỗi lần tải trang, tự mờ
+  // sau 8s, không chặn thao tác, không hiện lại.
+  useEffect(() => {
+    if (hintShownOnce) return
+    hintShownOnce = true
+    setShowHint(true)
+    const t = setTimeout(() => setShowHint(false), 8000)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Vào world: lưu vị trí cuộn + khóa cuộn. Thoát: trả cuộn (hoặc tới
   // section đích nếu goto từ terminal đã đặt worldExitTarget).
@@ -151,9 +169,13 @@ export default function WorldHUD() {
     return () => clearTimeout(t)
   }, [worldToast, setWorldToast])
 
-  // Esc + E + F tập trung (bỏ qua khi đang gõ trong input/textarea).
-  // Thứ tự Esc khi ngồi: card visit → máy tính → đứng dậy → thoát
-  // world. Mỗi lần Esc chỉ làm đúng một việc, không nhảy cóc.
+  // Esc + E tập trung (bỏ qua khi đang gõ trong input/textarea).
+  // Thứ tự Esc: card visit → máy tính → đứng dậy → terminal → panel
+  // → thoát world. Mỗi lần Esc chỉ làm đúng một việc, không nhảy cóc.
+  // Phím F đã bỏ (khung ảnh giờ mở bằng gaze + E như mọi vật khác).
+  // E: chỉ kích hoạt vật ĐANG NHÌN (gazeTarget); khi không nhìn vật
+  // nào thì không làm gì — không còn tự mở máy tính khi ngồi.
+  // Cảm ứng không có E: fallback nearby (nút bấm khi ở gần) giữ lại.
   useEffect(() => {
     const onKeyDown = (e) => {
       const target = e.target
@@ -181,23 +203,15 @@ export default function WorldHUD() {
         }
         return
       }
-      if (e.key.toLowerCase() === 'f' && st.seated) {
-        st.setPhotoCardOpen(!st.photoCardOpen)
-        return
-      }
       if (
         e.key.toLowerCase() === 'e' &&
         !st.terminalOpen &&
         !st.projectDetailId &&
-        !st.photoCardOpen
+        !st.photoCardOpen &&
+        !st.computerOpen
       ) {
-        if (st.seated) {
-          // Đang ngồi, máy tính đóng: E mở lại máy tính (đang gõ thì
-          // handler đã return ở trên, nên 'e' không rơi vào terminal).
-          if (!st.computerOpen) st.setComputerOpen(true)
-        } else if (st.nearby) {
-          interactWith(st.nearby)
-        }
+        const targetId = st.gazeTarget || (!st.seated ? st.nearby : null)
+        if (targetId) interactWith(targetId)
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -252,9 +266,13 @@ export default function WorldHUD() {
         </button>
       </div>
 
-      {/* Hướng dẫn điều khiển */}
-      <p className="absolute left-1/2 top-20 hidden -translate-x-1/2 rounded-full bg-black/40 px-4 py-1.5 text-center font-mono text-xs text-white/60 backdrop-blur-sm md:block">
-        WASD di chuyển · Shift chạy nhanh · Kéo chuột để nhìn · E tương tác
+      {/* Hướng dẫn điều khiển: chỉ 8s đầu lần đầu vào world, tự mờ. */}
+      <p
+        className={`absolute left-1/2 top-20 hidden -translate-x-1/2 rounded-full bg-black/40 px-4 py-1.5 text-center font-mono text-xs text-white/60 backdrop-blur-sm transition-opacity duration-1000 md:block ${
+          showHint ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        WASD di chuyển · Shift chạy nhanh · Kéo chuột để nhìn · Nhìn vào vật rồi bấm E
       </p>
 
       {/* Tâm ngắm */}
@@ -278,55 +296,35 @@ export default function WorldHUD() {
         </div>
       )}
 
-      {/* Thanh điều khiển khi ngồi: mở máy tính / xem khung ảnh /
-          đứng dậy. Prompt vật thể khác ẩn khi ngồi vì không với tới. */}
-      {seated && !photoCardOpen && (
-        <div className="pointer-events-auto absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-wrap justify-center gap-2 px-4">
-          {!computerOpen && (
+      {/* S2 (trải nghiệm gaze): KHÔNG còn thanh nút thường trực khi
+          ngồi, KHÔNG còn dòng nhắc khung rung — gợi ý duy nhất là pill
+          dưới đây, chỉ hiện khi đang NHÌN vào một vật (desktop) hoặc
+          đang Ở GẦN một vật (cảm ứng, không có con trỏ giữa màn hình).
+          Nhìn đi chỗ khác → pill biến mất. Đứng dậy: Esc. */}
+      {!coarsePointer &&
+        gazeTarget &&
+        !terminalOpen &&
+        !project &&
+        !computerOpen &&
+        !photoCardOpen && (
+          <div className="pointer-events-auto absolute bottom-6 left-1/2 -translate-x-1/2">
             <button
               type="button"
-              onClick={() => setComputerOpen(true)}
-              className="rounded-full bg-white px-5 py-3 text-sm font-medium text-ink-950 shadow-xl hover:scale-[1.03] active:scale-95"
+              onClick={() => interactWith(gazeTarget)}
+              className="rounded-full bg-white px-6 py-3 text-sm font-medium text-ink-950 shadow-xl transition-transform hover:scale-[1.03] active:scale-95"
             >
-              Mở máy tính
+              Nhấn E — {spotLabel(gazeTarget)}
             </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setPhotoCardOpen(true)}
-            className="rounded-full border border-white/25 bg-black/60 px-5 py-3 text-sm text-white/90 backdrop-blur-md hover:bg-white/10"
-          >
-            Xem khung ảnh (F)
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setComputerOpen(false)
-              setSeated(false)
-            }}
-            className="rounded-full border border-white/25 bg-black/60 px-5 py-3 text-sm text-white/90 backdrop-blur-md hover:bg-white/10"
-          >
-            Đứng dậy (Esc)
-          </button>
-        </div>
-      )}
-
-      {/* Gợi ý khung ảnh đang rung (chỉ khi ngồi, máy tính đóng) */}
-      {seated && !computerOpen && !photoCardOpen && (
-        <p className="absolute left-1/2 top-24 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/50 px-4 py-1.5 font-mono text-xs text-white/70 backdrop-blur-sm">
-          Khung ảnh đang rung ở bên phải — nhấn F để xem
-        </p>
-      )}
-
-      {/* Prompt tương tác */}
-      {nearby && !terminalOpen && !project && !seated && (
+          </div>
+        )}
+      {coarsePointer && nearby && !terminalOpen && !project && !seated && (
         <div className="pointer-events-auto absolute bottom-6 left-1/2 -translate-x-1/2">
           <button
             type="button"
             onClick={() => interactWith(nearby)}
             className="rounded-full bg-white px-6 py-3 text-sm font-medium text-ink-950 shadow-xl transition-transform hover:scale-[1.03] active:scale-95"
           >
-            Nhấn E — {spotLabel(nearby)}
+            Chạm — {spotLabel(nearby)}
           </button>
         </div>
       )}

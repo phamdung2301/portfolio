@@ -41,6 +41,33 @@ export const PROJECT_SPOTS = [
   { id: 'project:atlas-ui', projectId: 'atlas-ui', position: [5.5, 1.2, -2.5], radius: 2.6 },
 ]
 
+/**
+ * S2 (trải nghiệm gaze) — vật trên bàn. Tâm lấy ở vị trí thật trong
+ * cảnh (khung [1.45, 1.08, 0.45], PC [-1.95, 1.08, -0.55], cốc
+ * [-1.15, 1.08, 0.72]); y tâm nâng lên giữa vật để hướng nhìn tự nhiên
+ * trúng vật thay vì trúng chân đế.
+ */
+export const FRAME_SPOT = {
+  id: 'frame',
+  label: 'Khung ảnh — Xem khung ảnh',
+  position: [1.45, 1.4, 0.45],
+  radius: 2.6,
+}
+
+export const PC_SPOT = {
+  id: 'pc',
+  label: 'Thùng PC — Đổi đèn RGB',
+  position: [-1.95, 1.6, -0.55],
+  radius: 3.0,
+}
+
+export const MUG_SPOT = {
+  id: 'mug',
+  label: 'Cốc cà phê — Nhấp một ngụm',
+  position: [-1.15, 1.16, 0.72],
+  radius: 2.6,
+}
+
 export function skillSpot(skill) {
   return {
     id: `skill:${skill.id}`,
@@ -57,6 +84,9 @@ export function allSpots() {
     MONITOR_SPOT,
     CONTACT_SPOT,
     CHAIR_SPOT,
+    FRAME_SPOT,
+    PC_SPOT,
+    MUG_SPOT,
     ...PROJECT_SPOTS,
     ...SKILLS.map(skillSpot),
   ]
@@ -67,6 +97,9 @@ export function spotLabel(spotId) {
   if (spotId === 'monitor') return MONITOR_SPOT.label
   if (spotId === 'contact') return CONTACT_SPOT.label
   if (spotId === 'chair') return CHAIR_SPOT.label
+  if (spotId === 'frame') return FRAME_SPOT.label
+  if (spotId === 'pc') return PC_SPOT.label
+  if (spotId === 'mug') return MUG_SPOT.label
   if (spotId.startsWith('project:')) {
     const project = PROJECTS.find((p) => `project:${p.id}` === spotId)
     return project ? `Dự án: ${project.title} (${project.year})` : spotId
