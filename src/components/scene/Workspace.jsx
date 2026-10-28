@@ -387,53 +387,61 @@ const MonitorAssembly = forwardRef(function MonitorAssembly({ materials }, ref) 
         } else setTerminalOpen(true)
       }}
     >
-      {/* Màn đôi cạnh nhau (theo ảnh): chân đế đôi ở giữa bàn, hai tấm
-          1.9×1.07 đối xứng, khe giữa 0.1. Màn chính (trái) giữ ScreenDisplay
-          + click mở world/terminal/máy tính; màn hai (phải) chỉ hiển thị
-          dashboard, click vào nó bị chặn để không kích hoạt nhóm. */}
+      {/* Màn đôi góc 150° (mỗi màn xoay 15° vào trong): chân đế đôi ở
+          giữa bàn, hai tấm 1.9×1.07 đối xứng, tâm hạ từ 0.98 xuống 0.82
+          để tâm màn (thế giới y = 1.90) gần tầm mắt ghế (y = 1.42) hơn;
+          mỗi màn nghiêng nhẹ 0.08 rad cho mặt màn đón xuống tầm mắt.
+          Màn chính (trái) giữ ScreenDisplay + click mở world/terminal/
+          máy tính; màn hai (phải) chỉ hiển thị nội dung, click vào nó
+          bị chặn để không kích hoạt nhóm. Mép trong hai màn lùi về
+          sau 0.25 khi xoay, khe giữa nới 0.1 → ~0.16, không cấn nhau. */}
       <mesh position={[0, 0.03, -0.05]} material={materials.metal} castShadow>
         <boxGeometry args={[0.5, 0.06, 0.4]} />
       </mesh>
       <mesh position={[0, 0.5, -0.12]} material={materials.metal} castShadow>
         <boxGeometry args={[0.14, 1.0, 0.14]} />
       </mesh>
-      <mesh position={[-0.5, 0.98, -0.1]} material={materials.metal} castShadow>
+      <mesh position={[-0.5, 0.82, -0.1]} material={materials.metal} castShadow>
         <boxGeometry args={[1.0, 0.08, 0.08]} />
       </mesh>
-      <mesh position={[0.5, 0.98, -0.1]} material={materials.metal} castShadow>
+      <mesh position={[0.5, 0.82, -0.1]} material={materials.metal} castShadow>
         <boxGeometry args={[1.0, 0.08, 0.08]} />
       </mesh>
-      <RoundedBox
-        args={[1.9, 1.07, 0.08]}
-        radius={0.05}
-        smoothness={3}
-        material={materials.panel}
-        position={[-1.0, 0.98, 0]}
-        castShadow
-      />
-      <mesh material={materials.screen} position={[-1.0, 0.98, 0.05]}>
-        <planeGeometry args={[1.78, 1.0]} />
-      </mesh>
-      {/* S2 (ghế): mặt màn hình code gõ thật thay cho 4 vạch màu tĩnh. */}
-      <ScreenDisplay position={[-1.0, 0.98, 0.062]} width={1.78} height={1.0} />
-      {/* S2: đèn LED nguồn góc dưới-phải viền + thanh đèn trên đỉnh màn chính */}
-      <mesh position={[-0.15, 0.5, 0.06]}>
-        <sphereGeometry args={[0.02, 10, 10]} />
-        <meshBasicMaterial color="#22c55e" toneMapped={false} />
-      </mesh>
-      <mesh position={[-1.0, 1.56, 0]}>
-        <boxGeometry args={[0.9, 0.04, 0.04]} />
-        <meshBasicMaterial color="#fef3c7" toneMapped={false} />
-      </mesh>
-      <RoundedBox
-        args={[1.9, 1.07, 0.08]}
-        radius={0.05}
-        smoothness={3}
-        material={materials.panel}
-        position={[1.0, 0.98, 0]}
-        castShadow
-      />
-      <SecondScreenDisplay />
+      <group position={[-1.0, 0.82, 0]} rotation={[0.08, 0.26, 0]}>
+        <RoundedBox
+          args={[1.9, 1.07, 0.08]}
+          radius={0.05}
+          smoothness={3}
+          material={materials.panel}
+          position={[0, 0, 0]}
+          castShadow
+        />
+        <mesh material={materials.screen} position={[0, 0, 0.05]}>
+          <planeGeometry args={[1.78, 1.0]} />
+        </mesh>
+        <ScreenDisplay position={[0, 0, 0.062]} width={1.78} height={1.0} />
+        {/* Đèn LED nguồn góc dưới-phải viền + thanh đèn trên đỉnh màn chính
+            (tọa độ tương đối trong nhóm màn, tâm nhóm = tâm màn). */}
+        <mesh position={[0.85, -0.48, 0.06]}>
+          <sphereGeometry args={[0.02, 10, 10]} />
+          <meshBasicMaterial color="#22c55e" toneMapped={false} />
+        </mesh>
+        <mesh position={[0, 0.58, 0]}>
+          <boxGeometry args={[0.9, 0.04, 0.04]} />
+          <meshBasicMaterial color="#fef3c7" toneMapped={false} />
+        </mesh>
+      </group>
+      <group position={[1.0, 0.82, 0]} rotation={[0.08, -0.26, 0]}>
+        <RoundedBox
+          args={[1.9, 1.07, 0.08]}
+          radius={0.05}
+          smoothness={3}
+          material={materials.panel}
+          position={[0, 0, 0]}
+          castShadow
+        />
+        <SecondScreenDisplay />
+      </group>
     </group>
   )
 })
@@ -1048,7 +1056,7 @@ function SecondScreenDisplay() {
   }, [canvas, texture])
   return (
     <mesh
-      position={[1.0, 0.98, 0.052]}
+      position={[0, 0, 0.052]}
       onClick={(e) => e.stopPropagation()}
     >
       <planeGeometry args={[1.78, 1.0]} />

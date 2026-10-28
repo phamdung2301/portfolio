@@ -35,7 +35,7 @@ import { usePortfolioStore } from '../../store/usePortfolio.js'
  *  - Khi terminal/panel đang mở thì đứng yên (không di chuyển khi gõ).
  */
 const EYE_HEIGHT = 1.6
-const SEAT_POS = new THREE.Vector3(0, 1.3, 1.9)
+const SEAT_POS = new THREE.Vector3(0, 1.42, 1.9)
 const STAND_POS = new THREE.Vector3(0, 1.6, 2.7)
 const BOUND_RADIUS = 9.5
 const DESK_BOX = { x: 2.9, z: 1.6 }
@@ -177,7 +177,10 @@ export default function WorldPlayer() {
         fromY: camera.position.y,
         toPos: to,
         toYaw: 0,
-        toPitch: 0,
+        // Ngồi xuống đáp ở pitch 0.19 (~11°) = góc tới độ cao tâm màn
+        // (tâm màn y = 1.90, mắt ghế y = 1.42) thay vì pitch 0 nhìn xuống
+        // dưới mép màn; đứng dậy vẫn đáp pitch 0 như cũ.
+        toPitch: seated ? 0.19 : 0,
         toY: to.y,
       }
     }

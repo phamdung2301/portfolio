@@ -18,7 +18,7 @@ import { PROJECTS, SKILLS } from '../../data/portfolio.js'
 export const MONITOR_SPOT = {
   id: 'monitor',
   label: 'Màn hình — Mở terminal',
-  position: [-1.0, 2.06, -0.55],
+  position: [-1.0, 1.9, -0.55],
   radius: 3.4,
 }
 
