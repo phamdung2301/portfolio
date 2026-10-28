@@ -1021,9 +1021,10 @@ function LaptopOnStand({ materials }) {
  * Bên phải là DevTools Elements/Styles của chính card đó.
  * Render BÊN TRONG nhóm MonitorAssembly nên click phải chặn lan truyền,
  * nếu không sẽ kích hoạt nhầm onClick mở world/terminal của màn chính.
- * (C5 nối click lên card → mở repo GitHub; C4 chỉ vẽ nội dung.)
+ * (C5: bấm lên card → mở repo GitHub trong tab mới; hover đổi con trỏ.)
  */
 function SecondScreenDisplay() {
+  const worldMode = usePortfolioStore((s) => s.worldMode)
   const { canvas, texture } = useMemo(() => {
     const c = document.createElement('canvas')
     c.width = 640
@@ -1149,7 +1150,35 @@ function SecondScreenDisplay() {
   return (
     <mesh
       position={[0, 0, 0.052]}
-      onClick={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation()
+        // C5: bấm lên card web (nửa trái, dưới thanh trình duyệt) →
+        // mở repo AURUM MOTORS trên GitHub; chỉ trong world để click
+        // ở chế độ cuộn không vô tình mở tab mới khi đang xem landing.
+        if (worldMode && e.uv) {
+          const cx = e.uv.x * 640
+          const cy = (1 - e.uv.y) * 360
+          if (cx < 384 && cy > 34) {
+            window.open(
+              'https://github.com/phamdung2301/aurum_motors',
+              '_blank',
+              'noopener',
+            )
+          }
+        }
+      }}
+      onPointerMove={(e) => {
+        if (!worldMode || !e.uv) {
+          document.body.style.cursor = ''
+          return
+        }
+        const cx = e.uv.x * 640
+        const cy = (1 - e.uv.y) * 360
+        document.body.style.cursor = cx < 384 && cy > 34 ? 'pointer' : ''
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = ''
+      }}
     >
       <planeGeometry args={[1.78, 1.0]} />
       <meshBasicMaterial map={texture} toneMapped={false} />

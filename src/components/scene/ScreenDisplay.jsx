@@ -22,7 +22,8 @@ import { gameScoreRef } from '../world/shared.js'
  *    Darcula vẽ bằng canvas — thanh menu, cây project (tên file thật),
  *    3 tab file, editor chi chít code THẬT trích từ repo này (rgb.js,
  *    WorldPlayer.jsx, Workspace.jsx), thanh trạng thái có giờ thật.
- *    Tab đang mở là state nội bộ của component (C5 nối click lên tab).
+ *    Tab đang mở là state nội bộ của component (C5: bấm lên tab hoặc
+ *    hàng cây project trên màn sẽ đổi tab ngay trên màn 3D).
  *  - terminal: prompt + con trỏ nhấp nháy (C6 nối gõ phím vào đây).
  *  - game: tên game + điểm Flappy hiện tại (đọc từ gameScoreRef).
  *  - projects/contact: tiêu đề + thông tin chung (không vẽ số điện thoại
@@ -438,8 +439,51 @@ export default function ScreenDisplay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, canvas, texture, activeFile])
 
+  // C5: bấm trực tiếp lên màn IntelliJ.
+  // uv: (0,0) góc dưới-trái → canvas (x = u*1024, y = (1-v)*576).
+  // Vùng bấm: hàng tab (y 30..58, x theo IJ_TABS) + hàng cây project
+  // (x 0..220, y 92..332, hàng khớp IJ_TREE_ROW).
+  const zoneFile = (e) => {
+    if (mode !== 'intellij' || !e.uv) return null
+    const cx = e.uv.x * 1024
+    const cy = (1 - e.uv.y) * 576
+    if (cy >= 30 && cy < 58) {
+      const tab = IJ_TABS.find((t) => cx >= t.x && cx < t.x + t.w)
+      if (tab) return tab.id
+    }
+    if (cx < 220 && cy >= 92 && cy < 92 + 10 * 24) {
+      const row = Math.floor((cy - 92) / 24)
+      const entry = Object.entries(IJ_TREE_ROW).find(([, r]) => r === row)
+      if (entry) return entry[0]
+    }
+    return null
+  }
+  const handleClick = (e) => {
+    const file = zoneFile(e)
+    if (file) {
+      e.stopPropagation()
+      setActiveFile(file)
+      return
+    }
+    // Đang ngồi: giữ thao tác trên màn 3D, không để click rơi xuống
+    // nhóm mở lớp phủ máy tính; đang đứng/cuộn: để click nổi bọt lên
+    // nhóm (mở terminal / vào world) như cũ.
+    if (seated) e.stopPropagation()
+  }
+  const handleMove = (e) => {
+    document.body.style.cursor = zoneFile(e) ? 'pointer' : ''
+  }
+  const handleOut = () => {
+    document.body.style.cursor = ''
+  }
+
   return (
-    <mesh position={position}>
+    <mesh
+      position={position}
+      onClick={handleClick}
+      onPointerMove={handleMove}
+      onPointerOut={handleOut}
+    >
       <planeGeometry args={[width, height]} />
       <meshBasicMaterial map={texture} transparent toneMapped={false} />
     </mesh>
