@@ -8,6 +8,7 @@ import { usePortfolioStore } from '../../store/usePortfolio.js'
 import { seatRef } from '../world/shared.js'
 import ScreenDisplay from './ScreenDisplay.jsx'
 import { rgbColor, rgbFanSpeed } from './rgb.js'
+import { SKILLS, PROJECTS } from '../../data/portfolio.js'
 import { interactWith } from '../world/actions.js'
 
 /** Màu màn hình khi terminal trong world đang mở. */
@@ -164,6 +165,8 @@ export default function Workspace() {
       <PhoneClock />
       <FairyLights />
       <PCTower materials={materials} />
+      <LaptopOnStand materials={materials} />
+      <SecondMonitor materials={materials} />
       {/* Tấm spill ánh màn hình trên mặt bàn (màu/độ mờ cập nhật ở useFrame). */}
       <mesh position={[0, 1.082, -0.15]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[2.4, 0.8]} />
@@ -710,7 +713,7 @@ function Plant() {
   })
   const angles = [0, 1.26, 2.51, 3.77, 5.03]
   return (
-    <group position={[2.0, 1.08, -0.7]}>
+    <group position={[2.15, 1.08, -0.8]}>
       <mesh position={[0, 0.11, 0]} castShadow>
         <cylinderGeometry args={[0.14, 0.11, 0.22, 16]} />
         <meshStandardMaterial color="#9a3412" roughness={0.8} />
@@ -780,6 +783,187 @@ function PhoneClock() {
       </mesh>
       <mesh position={[0, 0.021, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[0.28, 0.14]} />
+        <meshBasicMaterial map={texture} toneMapped={false} />
+      </mesh>
+    </group>
+  )
+}
+
+/**
+ * Phase 1 — laptop trên stand ở góc phải-sau bàn (ambient: không pill,
+ * không click, không spot gaze). Màn hình gõ 4 dòng code THẬT lấy từ
+ * rgb.js trong repo, gõ xong giữ 2.5s rồi lặp lại (mẫu gõ như
+ * ScreenDisplay nhưng canvas riêng, nhỏ hơn).
+ */
+const LAPTOP_LINES = [
+  'export function rgbColor(mode, t, x, out = _c) {',
+  "  if (mode === 'off') {",
+  '    return out.setRGB(0.1, 0.11, 0.13)',
+  '  }',
+]
+function LaptopOnStand({ materials }) {
+  const { canvas, texture } = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 512
+    c.height = 320
+    const tex = new THREE.CanvasTexture(c)
+    tex.colorSpace = THREE.SRGBColorSpace
+    return { canvas: c, texture: tex }
+  }, [])
+  const typeRef = useRef({ line: 0, char: 0, holdUntil: 0 })
+  useEffect(() => {
+    return () => {
+      texture.dispose()
+    }
+  }, [texture])
+  useEffect(() => {
+    const ctx = canvas.getContext('2d')
+    const draw = () => {
+      ctx.fillStyle = '#0a0f1a'
+      ctx.fillRect(0, 0, 512, 320)
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'
+      ctx.font = '20px ui-monospace, Menlo, monospace'
+      ctx.fillText('rgb.js — code thật', 20, 30)
+      const t = typeRef.current
+      LAPTOP_LINES.forEach((lineText, i) => {
+        if (i > t.line) return
+        const visible = i < t.line ? lineText.length : t.char
+        ctx.fillStyle = 'rgba(255,255,255,0.88)'
+        ctx.font = '22px ui-monospace, Menlo, monospace'
+        ctx.fillText(lineText.slice(0, visible), 20, 72 + i * 40)
+      })
+      const blink = Math.floor(Date.now() / 530) % 2 === 0
+      if (blink && t.line < LAPTOP_LINES.length) {
+        ctx.fillStyle = '#67e8f9'
+        ctx.font = '22px ui-monospace, Menlo, monospace'
+        const w = ctx.measureText(LAPTOP_LINES[t.line].slice(0, t.char)).width
+        ctx.fillRect(20 + w + 4, 72 + t.line * 40 - 20, 10, 24)
+      }
+      texture.needsUpdate = true
+    }
+    const id = setInterval(() => {
+      const t = typeRef.current
+      const now = Date.now()
+      if (t.line >= LAPTOP_LINES.length) {
+        if (!t.holdUntil) t.holdUntil = now + 2500
+        if (now >= t.holdUntil) {
+          t.line = 0
+          t.char = 0
+          t.holdUntil = 0
+        }
+      } else {
+        const lineText = LAPTOP_LINES[t.line]
+        if (t.char < lineText.length) t.char += 1
+        else {
+          t.line += 1
+          t.char = 0
+        }
+      }
+      draw()
+    }, 45)
+    draw()
+    return () => clearInterval(id)
+  }, [canvas, texture])
+  return (
+    <group position={[1.5, 1.08, -0.6]}>
+      {/* Kệ nâng 0.25 */}
+      <mesh position={[0, 0.125, 0]} material={materials.metal} castShadow>
+        <boxGeometry args={[0.95, 0.25, 0.65]} />
+      </mesh>
+      {/* Đế laptop */}
+      <mesh position={[0, 0.26, 0.02]} material={materials.panel} castShadow>
+        <boxGeometry args={[0.9, 0.02, 0.6]} />
+      </mesh>
+      {/* Màn hình ngả sau ~7°, mép trên lùi tới z ≈ -0.94, không chạm dây fairy (z = -1.0). */}
+      <group position={[0, 0.27, -0.27]} rotation={[-0.12, 0, 0]}>
+        <mesh position={[0, 0.28, 0]} material={materials.panel} castShadow>
+          <boxGeometry args={[0.9, 0.56, 0.02]} />
+        </mesh>
+        <mesh position={[0, 0.28, 0.012]}>
+          <planeGeometry args={[0.84, 0.5]} />
+          <meshBasicMaterial map={texture} toneMapped={false} />
+        </mesh>
+      </group>
+    </group>
+  )
+}
+
+/**
+ * Phase 2 — màn hai xếp chồng trên màn chính (ambient: không pill,
+ * không click). Cột đỡ sau lưng màn chính; tấm 1.8×1.0, tâm y = 3.7
+ * (đáy 3.2, cách mép trên màn chính 3.085 một khe 0.115; từ ghế nhìn
+ * lên tâm màn là 44.4° nên cần clamp pitch ±0.8 của Phase 0).
+ * Dashboard vẽ từ dữ liệu THẬT (SKILLS level + PROJECTS trong
+ * portfolio.js) và giờ thật, vẽ lại mỗi 30s như PhoneClock.
+ */
+function SecondMonitor({ materials }) {
+  const { canvas, texture } = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 640
+    c.height = 360
+    const tex = new THREE.CanvasTexture(c)
+    tex.colorSpace = THREE.SRGBColorSpace
+    return { canvas: c, texture: tex }
+  }, [])
+  useEffect(() => {
+    return () => {
+      texture.dispose()
+    }
+  }, [texture])
+  useEffect(() => {
+    const draw = () => {
+      const ctx = canvas.getContext('2d')
+      ctx.fillStyle = '#0b0f1a'
+      ctx.fillRect(0, 0, 640, 360)
+      const now = new Date()
+      const hh = String(now.getHours()).padStart(2, '0')
+      const mm = String(now.getMinutes()).padStart(2, '0')
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 28px ui-monospace, Menlo, monospace'
+      ctx.textAlign = 'left'
+      ctx.fillText('TỔNG QUAN', 24, 36)
+      ctx.textAlign = 'right'
+      ctx.fillText(`${hh}:${mm}`, 616, 36)
+      ctx.textAlign = 'left'
+      SKILLS.forEach((s, i) => {
+        const y = 76 + i * 30
+        ctx.fillStyle = 'rgba(255,255,255,0.85)'
+        ctx.font = '20px ui-monospace, Menlo, monospace'
+        ctx.fillText(s.name, 24, y)
+        ctx.fillStyle = 'rgba(255,255,255,0.15)'
+        ctx.fillRect(200, y - 14, 280, 12)
+        ctx.fillStyle = s.accent
+        ctx.fillRect(200, y - 14, (280 * s.level) / 100, 12)
+        ctx.fillStyle = 'rgba(255,255,255,0.6)'
+        ctx.fillText(`${s.level}%`, 492, y)
+      })
+      PROJECTS.forEach((p, i) => {
+        ctx.fillStyle = p.accent
+        ctx.font = '18px ui-monospace, Menlo, monospace'
+        ctx.fillText(`• ${p.title} (${p.year})`, 24, 296 + i * 22)
+      })
+      texture.needsUpdate = true
+    }
+    draw()
+    const id = setInterval(draw, 30000)
+    return () => clearInterval(id)
+  }, [canvas, texture])
+  return (
+    <group>
+      {/* Cột đỡ từ mặt bàn lên sau lưng màn chính. */}
+      <mesh position={[0, 2.39, -0.68]} material={materials.metal} castShadow>
+        <boxGeometry args={[0.1, 2.62, 0.1]} />
+      </mesh>
+      <RoundedBox
+        args={[1.8, 1.0, 0.06]}
+        radius={0.03}
+        smoothness={3}
+        material={materials.panel}
+        position={[0, 3.7, -0.55]}
+        castShadow
+      />
+      <mesh position={[0, 3.7, -0.51]}>
+        <planeGeometry args={[1.68, 0.88]} />
         <meshBasicMaterial map={texture} toneMapped={false} />
       </mesh>
     </group>

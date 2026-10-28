@@ -22,8 +22,9 @@ import { usePortfolioStore } from '../../store/usePortfolio.js'
  *  - Khi `seated` đổi trạng thái, camera bay mềm 0.8s (smoothstep) từ vị
  *    trí hiện tại tới ghế ([0, 1.3, 1.9], nhìn về -z) hoặc ngược lại tới
  *    vị trí đứng trước ghế ([0, 1.6, 2.7]). Trong lúc bay thì khóa input.
- *  - Đang ngồi: không di chuyển, chỉ nhìn trong khoảng yaw ±0.6 rad và
- *    pitch ±0.5 rad; góc nhìn ghi vào seatRef.lookYaw để ghế xoay theo.
+ *  - Đang ngồi: không di chuyển, chỉ nhìn trong khoảng yaw ±1.0 rad và
+ *    pitch ±0.8 rad (đủ với tới khung ảnh, cốc, PC và màn hai xếp chồng);
+ *    góc nhìn ghi vào seatRef.lookYaw để ghế xoay theo.
  *  - Proximity tạm dừng khi ngồi (prompt vật thể khác sẽ là lừa, vì
  *    đang ngồi thì không với tới chúng).
  *
@@ -130,9 +131,11 @@ export default function WorldPlayer() {
       yaw.current -= dx * 0.0035
       pitch.current -= dy * 0.0035
       if (seated) {
-        // Khi ngồi: nhìn quanh màn hình trong khoảng hẹp.
-        yaw.current = Math.max(-0.6, Math.min(0.6, yaw.current))
-        pitch.current = Math.max(-0.5, Math.min(0.5, pitch.current))
+        // Khi ngồi: nhìn quanh trong khoảng đủ với tới vật trên bàn
+        // (khung ảnh 45°, cốc 44°, PC 38.5°) và màn hai xếp chồng
+        // (tâm màn 44.4° ngửa lên) — đo từ ghế [0, 1.3, 1.9].
+        yaw.current = Math.max(-1.0, Math.min(1.0, yaw.current))
+        pitch.current = Math.max(-0.8, Math.min(0.8, pitch.current))
       } else {
         pitch.current = Math.max(-1.2, Math.min(1.2, pitch.current))
       }
