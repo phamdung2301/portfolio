@@ -25,6 +25,9 @@ function Hero() {
   // S2: nút vào Thế giới tự do — đường vào chắc chắn nhất (DOM thật),
   // vì click mesh 3D có thể bị lớp Overlay chặn ở chế độ cuộn.
   const setWorldMode = usePortfolioStore((s) => s.setWorldMode)
+  // GĐ1 (code-split): HUD world là chunk riêng — tải trước trong lúc
+  // người dùng rê chuột/focus nút để lần bấm không phải chờ mạng.
+  const preloadWorld = () => import('./WorldHUD.jsx')
 
   // S1: hero scrub-out — khi hero cuộn đi, tiêu đề trôi lên + mờ dần
   // (cinematic exit, scrub theo scroll thật, không phải once:true).
@@ -91,6 +94,8 @@ function Hero() {
           <button
             type="button"
             onClick={() => setWorldMode(true)}
+            onPointerEnter={preloadWorld}
+            onFocus={preloadWorld}
             className="rounded-full border border-brand-400/50 px-6 py-3 text-sm font-medium text-brand-300 transition-colors hover:bg-brand-400/10 hover:text-white"
           >
             Vào thế giới 3D →

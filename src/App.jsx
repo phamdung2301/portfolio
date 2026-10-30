@@ -1,10 +1,15 @@
-import { useEffect } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
 import Scene from './components/Scene.jsx'
 import Overlay from './components/ui/Overlay.jsx'
-import WorldHUD from './components/ui/WorldHUD.jsx'
 import ErrorBoundary from './components/ui/ErrorBoundary.jsx'
 import { usePortfolioStore } from './store/usePortfolio.js'
 import { useScrollListener, scrollState } from './hooks/useScrollState.js'
+
+// GĐ1 (code-split): toàn bộ HUD + logic world (~1.400 dòng: HUD,
+// terminal, máy tính ngồi, card visit, Flappy) thành chunk riêng, chỉ
+// tải khi bấm "Vào thế giới 3D". Fallback là nền đen — khớp với hiệu
+// ứng fade đen 500ms của WorldHUD nên bước chuyển không lộ khuyết.
+const WorldHUD = lazy(() => import('./components/ui/WorldHUD.jsx'))
 
 export default function App() {
   const activeSection = usePortfolioStore((s) => s.activeSection)
@@ -42,7 +47,13 @@ export default function App() {
       </div>
 
       {/* Lớp nội dung 2D cuộn theo trang, hoặc HUD khi ở trong world */}
-      {worldMode ? <WorldHUD /> : <Overlay />}
+      {worldMode ? (
+        <Suspense fallback={<div className="fixed inset-0 z-30 bg-black" />}>
+          <WorldHUD />
+        </Suspense>
+      ) : (
+        <Overlay />
+      )}
 
       {/* M4: grain phim tĩnh phủ toàn viewport — không bắt sự kiện,
           không animate, chỉ là texture 5% nên không ảnh hưởng đọc chữ. */}

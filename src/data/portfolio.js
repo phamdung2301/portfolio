@@ -12,8 +12,6 @@ export const SECTIONS = [
   { id: 'contact', label: 'Liên hệ' },
 ]
 
-import { PORTRAIT_DATA, ZALO_QR_DATA } from './assets.js'
-
 export const PROFILE = {
   name: 'Phạm Hà Đắc Dũng',
   role: 'Full Stack Web Developer',
@@ -26,9 +24,10 @@ export const PROFILE = {
   // QR Zalo mã hóa link zalo.me theo số điện thoại này.
   phone: '0366542301',
   statusLine: 'direct to work',
-  portrait: PORTRAIT_DATA,
+  // GĐ1: ảnh chân dung + QR Zalo (~288KB base64) không còn nhúng vào
+  // PROFILE — tải trễ qua hooks/useProfileAssets.js để khỏi nằm trong
+  // bundle chính. PhotoCard và SeatedComputer tự lấy qua hook đó.
   zaloUrl: 'https://zalo.me/0366542301',
-  zaloQr: ZALO_QR_DATA,
   socials: [
     { label: 'GitHub', href: 'https://github.com/phamdung2301' },
     { label: 'LinkedIn', href: 'https://linkedin.com' },
@@ -43,8 +42,11 @@ export const ABOUT = [
 ]
 
 /**
- * Mỗi skill có `position` (toạ độ trong không gian 3D) và `accent` (màu nhấn).
- * `size` quyết định bán kính khối hình học.
+ * Mỗi skill có `position` (toạ độ trên vành cung hành tinh trong không
+ * gian 3D), `accent` (màu nhấn — dùng cho cả hành tinh 3D và thẻ UI),
+ * `level` (mức độ, quyết định kích thước tương đối) và `size` (bán kính
+ * hành tinh). GĐ1: bỏ `shape` — cụm khối hình học cũ đã thay bằng hành
+ * tinh, không còn ai đọc trường này.
  */
 export const SKILLS = [
   {
@@ -54,7 +56,6 @@ export const SKILLS = [
     accent: '#45d8f0',
     position: [-3.01, 3.6, -2.09],
     size: 0.42,
-    shape: 'box',
   },
   {
     id: 'three',
@@ -63,7 +64,6 @@ export const SKILLS = [
     accent: '#b39bff',
     position: [-2.33, 3.82, -3.2],
     size: 0.36,
-    shape: 'sphere',
   },
   {
     id: 'tailwind',
@@ -72,7 +72,6 @@ export const SKILLS = [
     accent: '#5eead4',
     position: [-1.27, 3.38, -3.94],
     size: 0.34,
-    shape: 'tetra',
   },
   {
     id: 'motion',
@@ -81,7 +80,6 @@ export const SKILLS = [
     accent: '#f9a8d4',
     position: [0, 3.6, -4.2],
     size: 0.33,
-    shape: 'octa',
   },
   {
     id: 'webgl',
@@ -90,7 +88,6 @@ export const SKILLS = [
     accent: '#fcd34d',
     position: [1.27, 3.81, -3.94],
     size: 0.38,
-    shape: 'icosa',
   },
   {
     id: 'node',
@@ -99,7 +96,6 @@ export const SKILLS = [
     accent: '#86efac',
     position: [2.33, 3.38, -3.2],
     size: 0.3,
-    shape: 'box',
   },
   {
     id: 'figma',
@@ -108,7 +104,6 @@ export const SKILLS = [
     accent: '#fb923c',
     position: [3.01, 3.61, -2.09],
     size: 0.31,
-    shape: 'octa',
   },
 ]
 

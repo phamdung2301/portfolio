@@ -1,4 +1,4 @@
-import { Suspense, memo, useRef } from 'react'
+import { Suspense, lazy, memo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { AdaptiveDpr, PerformanceMonitor } from '@react-three/drei'
 import { easing } from 'maath'
@@ -9,11 +9,16 @@ import DustParticles from './scene/DustParticles.jsx'
 import Workspace from './scene/Workspace.jsx'
 import SkillCluster from './scene/SkillCluster.jsx'
 import SceneEnvironment from './scene/SceneEnvironment.jsx'
-import WorldLevel from './scene/WorldLevel.jsx'
-import WorldPlayer from './scene/WorldPlayer.jsx'
 import { scrollState } from '../hooks/useScrollState.js'
 import { getSceneState } from './scene/choreography.js'
 import { usePortfolioStore } from '../store/usePortfolio.js'
+
+// GĐ1 (code-split): mặt bằng + người chơi world thành chunk riêng —
+// chỉ tải khi bấm "Vào thế giới 3D". Suspense bọc RIÊNG cặp này (không
+// dùng boundary ngoài cùng của Canvas): khi world chunk đang tải, phần
+// còn lại của cảnh vẫn render bình thường, fallback null = chưa hiện.
+const WorldLevel = lazy(() => import('./scene/WorldLevel.jsx'))
+const WorldPlayer = lazy(() => import('./scene/WorldPlayer.jsx'))
 
 /**
  * M5: giữ mượt khi FPS thấp — PerformanceMonitor + AdaptiveDpr tự hạ DPR.
@@ -197,10 +202,10 @@ function SceneContent() {
       <Workspace />
       <SkillCluster />
       {worldMode && (
-        <>
+        <Suspense fallback={null}>
           <WorldLevel />
           <WorldPlayer />
-        </>
+        </Suspense>
       )}
     </>
   )

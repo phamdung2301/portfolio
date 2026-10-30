@@ -68,13 +68,18 @@ export default function FlappyGame() {
   }
 
   // Space / ArrowUp chỉ khi tab Game đang hiển thị (component mounted).
-  // Không chặn khi đang gõ trong input (tab Game không có input, nhưng
-  // guard vẫn cần để Space không kích hoạt nút đang focus ngoài ý muốn
-  // khi game đã thua và nút "Chơi lại" đang focus).
+  // GĐ1: bỏ qua khi target là nút bấm — Space trên nút đang focus phải
+  // kích hoạt nút (click) chứ không flap thêm lần nữa (trước đây Space
+  // khi nút "Vỗ cánh"/"Chơi lại" đang focus bị bắn kép: click + global).
   useEffect(() => {
     const onKey = (e) => {
       if (e.key !== ' ' && e.key !== 'ArrowUp') return
-      if (e.target instanceof HTMLInputElement) return
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLButtonElement
+      )
+        return
       e.preventDefault()
       flap()
     }

@@ -47,3 +47,6 @@ coverage/
 
 # Misc
 *.local
+
+# ZCode session files
+.zcode/

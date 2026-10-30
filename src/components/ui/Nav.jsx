@@ -40,6 +40,9 @@ function Nav({ progress }) {
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     firstLinkRef.current?.focus()
+    // GĐ1: chốt nút burger tại thời điểm mở menu — đọc menuButtonRef
+    // trong cleanup sẽ lấy ref mới, có thể không còn là nút đã mở menu.
+    const menuButton = menuButtonRef.current
     const onKey = (e) => {
       if (e.key === 'Escape') setMenuOpen(false)
     }
@@ -47,7 +50,7 @@ function Nav({ progress }) {
     return () => {
       document.body.style.overflow = prevOverflow
       window.removeEventListener('keydown', onKey)
-      menuButtonRef.current?.focus()
+      menuButton?.focus()
     }
   }, [menuOpen])
 

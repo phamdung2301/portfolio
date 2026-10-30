@@ -25,7 +25,6 @@ export default class ErrorBoundary extends Component {
 
   componentDidCatch(error, info) {
     this.setState({ info })
-    // eslint-disable-next-line no-console
     console.error('Portfolio render error:', error, info)
   }
 

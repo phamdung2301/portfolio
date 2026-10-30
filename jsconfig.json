@@ -5,11 +5,7 @@
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "allowJs": true,
-    "checkJs": false,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "checkJs": false
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

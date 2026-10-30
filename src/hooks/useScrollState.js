@@ -21,8 +21,10 @@ export const scrollState = {
   sectionProgress: 0,
 }
 
-/** Đăng ký listener scroll/resize, trả về hàm dọn dẻ. */
-export function attachScrollListener() {
+/** Đăng ký listener scroll/resize, trả về hàm dọn dẻ. GĐ1: không còn
+ * export — chỉ useScrollListener bên dưới dùng (trước đây export nhưng
+ * không ai import riêng, gây hai đường vào cùng một listener). */
+function attachScrollListener() {
   const update = () => {
     const doc = document.documentElement
     const max = doc.scrollHeight - window.innerHeight

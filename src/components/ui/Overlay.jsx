@@ -1,5 +1,4 @@
 import { memo } from 'react'
-import { motion } from 'framer-motion'
 import Nav from './Nav.jsx'
 import Hero from './Hero.jsx'
 import About from './About.jsx'

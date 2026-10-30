@@ -74,6 +74,8 @@ function CaseStudySheet({ project, onClose, triggerRef }) {
 
   useEffect(() => {
     // Focus vào sheet khi mở; khóa scroll nền; Escape đóng + trả focus.
+    // GĐ1: chốt phần tử trigger tại thời điểm mở (xem Nav.jsx cùng lỗi).
+    const trigger = triggerRef.current
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     panelRef.current?.focus()
@@ -84,7 +86,7 @@ function CaseStudySheet({ project, onClose, triggerRef }) {
     return () => {
       document.body.style.overflow = prevOverflow
       window.removeEventListener('keydown', onKey)
-      triggerRef.current?.focus()
+      trigger?.focus()
     }
   }, [onClose, triggerRef])
 

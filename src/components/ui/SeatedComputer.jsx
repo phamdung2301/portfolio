@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { PROFILE, PROJECTS, SKILLS } from '../../data/portfolio.js'
+import { PROFILE, PROJECTS } from '../../data/portfolio.js'
 import { usePortfolioStore } from '../../store/usePortfolio.js'
 import { TerminalBody } from './WorldTerminal.jsx'
 import FlappyGame from './FlappyGame.jsx'
+import useProfileAssets from '../../hooks/useProfileAssets.js'
 
 /**
  * S2 (máy tính khi ngồi) — cửa sổ máy tính với 5 tab, chỉ mở khi seated.
@@ -65,6 +66,8 @@ export default function SeatedComputer() {
   const [codeFile, setCodeFile] = useState(CODE_FILES[0])
   const [selectedProject, setSelectedProject] = useState(null)
   const [copied, setCopied] = useState(null)
+  // GĐ1: QR Zalo tải trễ từ chunk riêng (kèm ảnh chân dung card visit).
+  const assets = useProfileAssets()
 
   useEffect(() => {
     const onKey = (e) => {
@@ -266,11 +269,15 @@ export default function SeatedComputer() {
               </a>
             </div>
             <div className="flex items-center gap-3">
-              <img
-                src={PROFILE.zaloQr}
-                alt="Mã QR Zalo"
-                className="h-24 w-24 rounded-lg bg-white p-1"
-              />
+              {assets?.zaloQr ? (
+                <img
+                  src={assets.zaloQr}
+                  alt="Mã QR Zalo"
+                  className="h-24 w-24 rounded-lg bg-white p-1"
+                />
+              ) : (
+                <div className="h-24 w-24 shrink-0 animate-pulse rounded-lg bg-white/5" />
+              )}
               <p className="text-xs text-white/60">
                 Quét mã để kết bạn Zalo.
                 <br />

@@ -11,7 +11,7 @@ import { getSceneState } from './choreography.js'
  * Cụm HÀNH TINH đại diện cho các kỹ năng (thay cho khối hình học cũ).
  *
  * Ánh xạ theo cấp độ = kích thước, màu giữ nguyên accent của kỹ năng
- * để vẫn nhận ra theo màu cũ; `shape` trong data không còn dùng:
+ * để vẫn nhận ra theo màu cũ:
  *  - React (95) → Sao Mộc (sọc vân khí), Tailwind (92) → Sao Thổ (vành),
  *  - Three.js (90) → Sao Hải Vương, Framer Motion (88) → Sao Thiên Vương,
  *  - WebGL (86) → Trái Đất, Node.js (82) → Sao Kim, Figma (80) → Sao Thủy.
@@ -190,7 +190,9 @@ function PlanetOrb({ skill, index }) {
       if (!st.collectedSkills.includes(skill.id)) {
         st.collectSkill(skill.id)
         const total = usePortfolioStore.getState().collectedSkills.length
-        st.setWorldToast(`Đã thu thập: ${skill.name} (${total}/7)`)
+        st.setWorldToast(
+          `Đã thu thập: ${skill.name} (${total}/${SKILLS.length})`,
+        )
       }
       return
     }

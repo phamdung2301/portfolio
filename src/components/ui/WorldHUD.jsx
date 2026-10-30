@@ -12,6 +12,7 @@ import { worldInput } from '../world/input.js'
 import WorldTerminal from './WorldTerminal.jsx'
 import SeatedComputer from './SeatedComputer.jsx'
 import PhotoCard from './PhotoCard.jsx'
+import { preloadProfileAssets } from '../../hooks/useProfileAssets.js'
 
 /**
  * S2 — HUD của Thế giới tự do (DOM, nằm trên Canvas khi worldMode bật).
@@ -96,7 +97,6 @@ export default function WorldHUD() {
   const computerOpen = usePortfolioStore((s) => s.computerOpen)
   const photoCardOpen = usePortfolioStore((s) => s.photoCardOpen)
   const setWorldMode = usePortfolioStore((s) => s.setWorldMode)
-  const setTerminalOpen = usePortfolioStore((s) => s.setTerminalOpen)
   const setProjectDetailId = usePortfolioStore(
     (s) => s.setProjectDetailId,
   )
@@ -123,7 +123,6 @@ export default function WorldHUD() {
     setShowHint(true)
     const t = setTimeout(() => setShowHint(false), 8000)
     return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Vào world: lưu vị trí cuộn + khóa cuộn. Thoát: trả cuộn (hoặc tới
@@ -131,6 +130,9 @@ export default function WorldHUD() {
   useEffect(() => {
     savedScroll.current = window.scrollY
     document.body.style.overflow = 'hidden'
+    // GĐ1: tải trước chunk ảnh + QR (khi HUD mount) để card visit và
+    // tab Liên hệ hiện ảnh ngay khi mở, không nhấp nháy placeholder.
+    preloadProfileAssets().catch(() => {})
     const t = setTimeout(() => setFade(false), 60)
     return () => {
       clearTimeout(t)
@@ -147,7 +149,6 @@ export default function WorldHUD() {
         window.scrollTo(0, savedScroll.current)
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -405,7 +406,7 @@ export default function WorldHUD() {
               FULL STACK
             </p>
             <h3 className="mt-2 text-2xl font-semibold text-white">
-              Bạn đã thu thập đủ 7 kỹ năng!
+              Bạn đã thu thập đủ {SKILLS.length} kỹ năng!
             </h3>
             <p className="mt-2 text-sm text-white/70">
               Thế giới vẫn mở để bạn đi dạo tiếp, hoặc tới phần liên hệ để

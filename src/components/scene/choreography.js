@@ -93,10 +93,20 @@ export const SCENE_STATES = [
 
 const lerp = (a, b, t) => a + (b - a) * t
 
+// GĐ1 (hiệu năng): getSceneState được gọi nhiều lần mỗi frame (Lights,
+// SceneFog, SectionBeam, Workspace và từng orb trong SkillCluster) —
+// cấp phát THREE.Color mới mỗi lần tạo ~44 object/giây·frame rác GC.
+// Dùng màu scratch dùng lại: các consumer chỉ đọc/lerp TỪ màu này ngay
+// trong cùng frame, không được giữ tham chiếu qua frame.
+const _fog = new THREE.Color()
+const _monitorColor = new THREE.Color()
+const _beamColor = new THREE.Color()
+const _lerpFrom = new THREE.Color()
+
 /**
  * Sample the interpolated scene state for a global scroll progress t (0..1).
- * Returns fresh THREE.Color objects per call; callers call this once per
- * frame and reuse the result inside that frame.
+ * The THREE.Color fields are shared scratch objects reused across calls —
+ * read or copy them within the same frame, never store the reference.
  */
 export function getSceneState(t) {
   const clamped = Math.min(1, Math.max(0, t))
@@ -109,23 +119,20 @@ export function getSceneState(t) {
   const b = SCENE_STATES[index + 1]
 
   return {
-    id: local < 0.5 ? a.id : b.id,
-    fog: new THREE.Color(a.fog).lerp(new THREE.Color(b.fog), eased),
+    fog: _fog.set(a.fog).lerp(_lerpFrom.set(b.fog), eased),
     ambient: lerp(a.ambient, b.ambient, eased),
     key: lerp(a.key, b.key, eased),
     rim: lerp(a.rim, b.rim, eased),
     cyan: lerp(a.cyan, b.cyan, eased),
     monitor: lerp(a.monitor, b.monitor, eased),
-    monitorColor: new THREE.Color(a.monitorColor).lerp(
-      new THREE.Color(b.monitorColor),
-      eased,
-    ),
+    monitorColor: _monitorColor
+      .set(a.monitorColor)
+      .lerp(_lerpFrom.set(b.monitorColor), eased),
     orbBoost: lerp(a.orbBoost, b.orbBoost, eased),
     beam: lerp(a.beam, b.beam, eased),
     beamX: lerp(a.beamX, b.beamX, eased),
-    beamColor: new THREE.Color(a.beamColor).lerp(
-      new THREE.Color(b.beamColor),
-      eased,
-    ),
+    beamColor: _beamColor
+      .set(a.beamColor)
+      .lerp(_lerpFrom.set(b.beamColor), eased),
   }
 }

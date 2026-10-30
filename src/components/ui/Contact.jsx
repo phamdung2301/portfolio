@@ -93,7 +93,9 @@ function Contact() {
   useEffect(() => () => clearTimer(), [])
 
   const copyEmail = async () => {
-    let ok = false
+    // GĐ1: bỏ initializer `= false` — mọi nhánh đều gán ok (thành công
+    // hoặc qua fallback), giá trị khởi tạo cũ không bao giờ được đọc.
+    let ok
     try {
       await navigator.clipboard.writeText(PROFILE.email)
       ok = true

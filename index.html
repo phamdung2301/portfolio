@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#07070a" />
+    <!-- GĐ1: favicon SVG "d." theo màu brand — trước đây trình duyệt
+         request /favicon.ico và nhận 404 vì repo không có public/. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!-- F3: font thật — trước đây Inter chỉ ghi tên trong CSS mà không
          có @font-face hay <link> nào, nên trình duyệt thực chất render
          font hệ thống. Space Grotesk làm display face cho tên hero,
@@ -70,6 +73,20 @@
   </head>
   <body class="bg-[#07070a] text-white antialiased">
     <div id="root"></div>
+    <!-- GĐ1: thông báo khi JS bị tắt — trước đây trang trắng tinh không
+         một lời giải thích, người duyệt content curation không thấy gì. -->
+    <noscript>
+      <div
+        style="max-width: 34rem; margin: 40vh auto 0; padding: 0 1.5rem; color: #e8e8ef; font-family: system-ui, sans-serif; text-align: center"
+      >
+        Portfolio này cần JavaScript để hiển thị cảnh 3D tương tác.
+        <br />
+        Hãy bật JavaScript, hoặc liên hệ trực tiếp:
+        <a href="mailto:phamhadacdung2301@gmail.com" style="color: #45d8f0"
+          >phamhadacdung2301@gmail.com</a
+        >
+      </div>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

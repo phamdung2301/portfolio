@@ -208,6 +208,22 @@ export default function ScreenDisplay({
   ])
   const [termInput, setTermInput] = useState('')
   const termInputRef = useRef('')
+
+  // GĐ1: giá trị vẽ hay đổi nằm trong ref để interval vẽ KHÔNG phải
+  // hủy/tạo lại mỗi keystroke — trước đây termLines/termInput nằm trong
+  // deps của effect interval, mỗi phím gõ đều dọn rồi dựng lại timer.
+  const activeFileRef = useRef(activeFile)
+  const termLinesRef = useRef(termLines)
+  const drawRef = useRef(null)
+  useEffect(() => {
+    activeFileRef.current = activeFile
+  }, [activeFile])
+  useEffect(() => {
+    termLinesRef.current = termLines
+  }, [termLines])
+  useEffect(() => {
+    termInputRef.current = termInput
+  }, [termInput])
   const setScreenTermActive = usePortfolioStore((s) => s.setScreenTermActive)
   useEffect(() => {
     setScreenTermActive(termActive)
@@ -373,7 +389,7 @@ export default function ScreenDisplay({
         const now = new Date()
         const hh = String(now.getHours()).padStart(2, '0')
         const mm = String(now.getMinutes()).padStart(2, '0')
-        const file = INTELLIJ_FILES[activeFile]
+        const file = INTELLIJ_FILES[activeFileRef.current]
         ctx.textBaseline = 'top'
         // Thanh menu.
         ctx.fillStyle = '#2b2d30'
@@ -393,7 +409,7 @@ export default function ScreenDisplay({
         ctx.fillRect(0, 30, W, 28)
         ctx.font = '17px ui-monospace, Menlo, monospace'
         for (const tab of IJ_TABS) {
-          const active = tab.id === activeFile
+          const active = tab.id === activeFileRef.current
           ctx.fillStyle = active ? '#1e1f22' : '#2b2d30'
           ctx.fillRect(tab.x, 30, tab.w, 28)
           if (active) {
@@ -424,7 +440,7 @@ export default function ScreenDisplay({
         ctx.font = '17px ui-monospace, Menlo, monospace'
         tree.forEach((row, i) => {
           const y = 92 + i * 24
-          if (IJ_TREE_ROW[activeFile] === i) {
+          if (IJ_TREE_ROW[activeFileRef.current] === i) {
             ctx.fillStyle = '#3a3d42'
             ctx.fillRect(0, y - 2, 220, 22)
           }
@@ -469,7 +485,7 @@ export default function ScreenDisplay({
         ctx.font = '26px ui-monospace, Menlo, monospace'
         ctx.textBaseline = 'top'
         ctx.textAlign = 'left'
-        const visible = termLines.slice(-11)
+        const visible = termLinesRef.current.slice(-11)
         visible.forEach((line, i) => {
           ctx.fillStyle =
             line.kind === 'in' ? '#4ade80' : 'rgba(255,255,255,0.85)'
@@ -480,9 +496,9 @@ export default function ScreenDisplay({
         ctx.fillText('dung@portfolio:~$', 48, promptY)
         const pw = ctx.measureText('dung@portfolio:~$ ').width
         ctx.fillStyle = 'rgba(255,255,255,0.92)'
-        ctx.fillText(termInput, 48 + pw, promptY)
+        ctx.fillText(termInputRef.current, 48 + pw, promptY)
         if (blink) {
-          const iw = ctx.measureText(termInput).width
+          const iw = ctx.measureText(termInputRef.current).width
           ctx.fillStyle = '#4ade80'
           ctx.fillRect(48 + pw + iw + 4, promptY + 2, 14, 28)
         }
@@ -519,12 +535,23 @@ export default function ScreenDisplay({
 
     // IntelliJ: tick 530ms cho con trỏ nhấp nháy + đồng hồ phút;
     // các mode khác chỉ cần vẽ lại theo nhịp nhấp nháy/điểm số.
+    // GĐ1: deps chỉ còn mode/canvas/texture — giá trị hay đổi đọc qua
+    // ref bên trong draw, nên timer giữ nguyên qua từng keystroke.
     const interval = mode === 'intellij' ? 530 : 300
     const id = setInterval(draw, interval)
+    drawRef.current = draw
     draw()
-    return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, canvas, texture, activeFile, termLines, termInput])
+    return () => {
+      clearInterval(id)
+      drawRef.current = null
+    }
+  }, [mode, canvas, texture])
+
+  // Vẽ lại NGAY khi đổi tab IntelliJ hoặc gõ lệnh terminal (nội dung
+  // mới không phải chờ nhịp interval kế tiếp).
+  useEffect(() => {
+    drawRef.current?.()
+  }, [activeFile, termLines, termInput])
 
   // C5: bấm trực tiếp lên màn IntelliJ.
   // uv: (0,0) góc dưới-trái → canvas (x = u*1024, y = (1-v)*576).
@@ -563,6 +590,14 @@ export default function ScreenDisplay({
   const handleOut = () => {
     document.body.style.cursor = ''
   }
+  // GĐ1: unmount giữa lúc hover (thoát world, đổi mode) có thể bỏ qua
+  // onPointerOut — dọn cursor để không kẹt kiểu 'pointer' trên body.
+  useEffect(
+    () => () => {
+      document.body.style.cursor = ''
+    },
+    [],
+  )
 
   return (
     <mesh

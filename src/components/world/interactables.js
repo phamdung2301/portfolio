@@ -84,17 +84,25 @@ export function skillSpot(skill) {
   }
 }
 
+/**
+ * GĐ1 (hiệu năng): WorldPlayer gọi allSpots() 2 lần mỗi frame (gaze +
+ * proximity) — trước đây mỗi lần gọi dựng lại mảng mới cùng 7 object
+ * skillSpot. Mảng được tính một lần khi tải module (SKILLS là dữ liệu
+ * tĩnh). KHÔNG mutate mảng này hay các spot bên trong nó.
+ */
+const ALL_SPOTS = [
+  MONITOR_SPOT,
+  CONTACT_SPOT,
+  CHAIR_SPOT,
+  FRAME_SPOT,
+  PC_SPOT,
+  MUG_SPOT,
+  ...PROJECT_SPOTS,
+  ...SKILLS.map(skillSpot),
+]
+
 export function allSpots() {
-  return [
-    MONITOR_SPOT,
-    CONTACT_SPOT,
-    CHAIR_SPOT,
-    FRAME_SPOT,
-    PC_SPOT,
-    MUG_SPOT,
-    ...PROJECT_SPOTS,
-    ...SKILLS.map(skillSpot),
-  ]
+  return ALL_SPOTS
 }
 
 export function spotLabel(spotId) {

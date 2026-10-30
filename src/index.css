@@ -48,7 +48,7 @@
     color: var(--color-ink-950);
   }
 
-  /* Scrollbar mảnh cho vùng scroll của ScrollControls */
+  /* Scrollbar mảnh cho trang cuộn dọc */
   ::-webkit-scrollbar {
     width: 6px;
   }

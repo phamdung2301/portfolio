@@ -23,7 +23,7 @@ const KEYFRAMES = [
  *  - thêm sway nhẹ theo thời gian để cảnh không bị "chết"
  */
 export default function CameraRig() {
-  const { camera, size } = useThree()
+  const { camera } = useThree()
   const worldMode = usePortfolioStore((s) => s.worldMode)
   const pointer = useRef({ x: 0, y: 0 })
   const current = useRef({

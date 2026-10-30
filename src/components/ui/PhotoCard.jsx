@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { PROFILE, SKILLS } from '../../data/portfolio.js'
 import { usePortfolioStore } from '../../store/usePortfolio.js'
+import useProfileAssets from '../../hooks/useProfileAssets.js'
 
 /**
  * S2 (card visit từ khung ảnh) — thông tin do chính user cung cấp
@@ -12,6 +13,9 @@ import { usePortfolioStore } from '../../store/usePortfolio.js'
 export default function PhotoCard() {
   const setPhotoCardOpen = usePortfolioStore((s) => s.setPhotoCardOpen)
   const [copied, setCopied] = useState(null)
+  // GĐ1: ảnh + QR tải trễ từ chunk riêng — vẽ placeholder xám nhấp nháy
+  // trong khoảnh khắc chunk chưa về (thường <100ms sau khi vào world).
+  const assets = useProfileAssets()
 
   const topSkills = [...SKILLS]
     .sort((a, b) => b.level - a.level)
@@ -48,11 +52,15 @@ export default function PhotoCard() {
       </div>
 
       <div className="flex gap-4 px-5 pb-5 pt-3">
-        <img
-          src={PROFILE.portrait}
-          alt={`Ảnh chân dung ${PROFILE.name}`}
-          className="h-44 w-32 shrink-0 rounded-xl object-cover"
-        />
+        {assets?.portrait ? (
+          <img
+            src={assets.portrait}
+            alt={`Ảnh chân dung ${PROFILE.name}`}
+            className="h-44 w-32 shrink-0 rounded-xl object-cover"
+          />
+        ) : (
+          <div className="h-44 w-32 shrink-0 animate-pulse rounded-xl bg-white/5" />
+        )}
         <div className="min-w-0">
           <h3 className="text-xl font-semibold leading-tight text-white">
             {PROFILE.name}
@@ -110,11 +118,15 @@ export default function PhotoCard() {
       </div>
 
       <div className="flex items-center gap-3 border-t border-white/10 px-5 py-4">
-        <img
-          src={PROFILE.zaloQr}
-          alt="Mã QR Zalo"
-          className="h-24 w-24 rounded-lg bg-white p-1"
-        />
+        {assets?.zaloQr ? (
+          <img
+            src={assets.zaloQr}
+            alt="Mã QR Zalo"
+            className="h-24 w-24 rounded-lg bg-white p-1"
+          />
+        ) : (
+          <div className="h-24 w-24 shrink-0 animate-pulse rounded-lg bg-white/5" />
+        )}
         <div className="text-sm">
           <p className="font-medium text-white">Kết bạn Zalo</p>
           <p className="mt-1 text-white/60">

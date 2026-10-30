@@ -74,7 +74,7 @@ export function interactWith(spotId) {
     const total = usePortfolioStore.getState().collectedSkills.length
     const skill = SKILLS.find((k) => k.id === skillId)
     s.setWorldToast(
-      `Đã thu thập: ${skill ? skill.name : skillId} (${total}/7)`,
+      `Đã thu thập: ${skill ? skill.name : skillId} (${total}/${SKILLS.length})`,
     )
     return
   }

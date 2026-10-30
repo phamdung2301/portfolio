@@ -14,6 +14,11 @@ import { interactWith } from '../world/actions.js'
 /** Màu màn hình khi terminal trong world đang mở. */
 const TERMINAL_GREEN = new THREE.Color('#22c55e')
 
+// GĐ1: màu spill dùng lại giữa các frame — trước đây useFrame cấp phát
+// THREE.Color mới mỗi frame (rác GC không cần thiết).
+const SPILL_TERMINAL = new THREE.Color('#22c55e')
+const SPILL_DEFAULT = new THREE.Color('#22d3ee')
+
 /**
  * Vật thể chính: góc làm việc low-poly.
  * Tất cả vật thể nằm trong group `root` được dịch chuyển/nghiêng theo scroll.
@@ -124,7 +129,7 @@ export default function Workspace() {
     // trạng thái màn hình (xanh lá khi terminal, cyan còn lại).
     if (spillRef.current) {
       spillColor.current.lerp(
-        new THREE.Color(worldMode && terminalActive ? '#22c55e' : '#22d3ee'),
+        worldMode && terminalActive ? SPILL_TERMINAL : SPILL_DEFAULT,
         1 - Math.exp(-3 * delta),
       )
       spillRef.current.color.copy(spillColor.current)
@@ -1147,6 +1152,14 @@ function SecondScreenDisplay() {
     const id = setInterval(draw, 30000)
     return () => clearInterval(id)
   }, [canvas, texture])
+  // GĐ1: unmount giữa lúc hover có thể bỏ qua onPointerOut — dọn cursor
+  // để không kẹt kiểu 'pointer' trên body (giống ScreenDisplay).
+  useEffect(
+    () => () => {
+      document.body.style.cursor = ''
+    },
+    [],
+  )
   return (
     <mesh
       position={[0, 0, 0.052]}

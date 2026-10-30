@@ -317,18 +317,14 @@ export default function WorldPlayer() {
       }
     }
 
-    // Đặt camera theo yaw/pitch.
+    // Đặt camera theo yaw/pitch. GĐ1: tính lookAt trực tiếp từ lượng
+    // giác, thay vì cấp phát THREE.Vector3 mới mỗi frame.
     const cp = Math.cos(pitch.current)
-    const dir = new THREE.Vector3(
-      -Math.sin(yaw.current) * cp,
-      Math.sin(pitch.current),
-      -Math.cos(yaw.current) * cp,
-    )
     camera.position.set(pos.current.x, EYE_HEIGHT, pos.current.z)
     camera.lookAt(
-      pos.current.x + dir.x,
-      EYE_HEIGHT + dir.y,
-      pos.current.z + dir.z,
+      pos.current.x - Math.sin(yaw.current) * cp,
+      EYE_HEIGHT + Math.sin(pitch.current),
+      pos.current.z - Math.cos(yaw.current) * cp,
     )
 
     // Gaze: vật đang nhìn (chỉ tính khi không bay camera).
